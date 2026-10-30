@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<title>Dashboard มูลค่ายาคงคลัง</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap">
+<style>
+:root{--bg:#f4f6fb;--card:#fff;--fg:#0f172a;--mut:#64748b;--line:#e7ebf3;--acc:#4f46e5;--acc2:#7c3aed;--ok:#059669;--warn:#d97706;--bad:#e11d48;--none:#94a3b8;
+--side1:#0f172a;--side2:#1e1b4b;--shadow:0 1px 2px rgba(15,23,42,.04),0 10px 28px -14px rgba(15,23,42,.16);--r:16px}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0a0f1e;--card:#111a2e;--fg:#e6eaf5;--mut:#93a0b8;--line:#1f2a44;--acc:#818cf8;--acc2:#a78bfa;--ok:#34d399;--warn:#fbbf24;--bad:#fb7185;--none:#64748b;--shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px -14px rgba(0,0,0,.6)}}
+:root[data-theme=dark]{--bg:#0a0f1e;--card:#111a2e;--fg:#e6eaf5;--mut:#93a0b8;--line:#1f2a44;--acc:#818cf8;--acc2:#a78bfa;--ok:#34d399;--warn:#fbbf24;--bad:#fb7185;--none:#64748b;--shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px -14px rgba(0,0,0,.6)}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font:14px/1.55 "Inter","Noto Sans Thai","Sarabun","Segoe UI",Tahoma,sans-serif;background:var(--bg);color:var(--fg);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+h1,h2,h3{letter-spacing:-.01em}
+
+/* shell: sidebar (desktop) / icon rail (tablet) / bottom bar (phone) */
+.app{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh;min-height:100dvh}
+.side{background:var(--side1);color:#cbd5e1;padding:20px 14px;position:sticky;top:0;height:100vh;height:100dvh;display:flex;flex-direction:column;gap:22px}
+.brand{display:flex;align-items:center;gap:11px;color:#fff;font-weight:700;font-size:15px;line-height:1.25;padding:0 6px}
+.logo{width:38px;height:38px;border-radius:12px;background:var(--acc);display:grid;place-items:center;font-size:19px;box-shadow:0 6px 16px -4px rgba(99,102,241,.6);flex:none}
+.brand small{display:block;font-weight:400;color:#94a3b8;font-size:11px}
+nav{display:flex;flex-direction:column;gap:4px}
+nav button{display:flex;align-items:center;gap:12px;border:0;background:none;color:#aab4c8;padding:11px 12px;border-radius:12px;cursor:pointer;font:inherit;font-weight:500;text-align:left;transition:background .15s,color .15s;position:relative}
+nav button svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+nav button:hover{background:rgba(255,255,255,.07);color:#fff}
+nav button.on{background:rgba(255,255,255,.12);color:#fff}
+nav button.on::before{content:"";position:absolute;left:-14px;top:9px;bottom:9px;width:4px;border-radius:0 4px 4px 0;background:var(--acc)}
+nav .sm{display:none}
+.side-foot{margin-top:auto;font-size:11px;color:#64748b;padding:0 6px}
+
+.content{min-width:0;display:flex;flex-direction:column}
+.top{position:sticky;top:0;z-index:10;display:flex;flex-wrap:wrap;gap:12px 16px;align-items:center;padding:14px 28px;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.ttl{display:flex;align-items:center;gap:10px;margin-right:auto;min-width:0}
+.ttl .logo{display:none;width:34px;height:34px;font-size:17px}
+h1{font-size:20px;margin:0;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.filters label{display:flex;flex-direction:column;gap:2px;color:var(--mut);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.filters select{min-width:112px;text-transform:none;letter-spacing:0;font-weight:500}
+.user{display:flex;align-items:center;gap:8px}
+#who{color:var(--mut);font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.icon-btn{width:38px;height:38px;border-radius:11px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer;display:grid;place-items:center;font-size:16px;box-shadow:var(--shadow)}
+main{padding:24px 28px 40px;width:100%;max-width:1480px;margin:0 auto}
+
+select,input,textarea{font:inherit;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:11px;padding:8px 11px;outline:none;transition:border-color .15s,box-shadow .15s;max-width:100%}
+select:focus,input:focus,textarea:focus{border-color:var(--acc);box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 22%,transparent)}
+.grid{display:grid;gap:16px}
+.kpis{grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;box-shadow:var(--shadow);min-width:0}
+.card h3{margin:0 0 12px;font-size:15px;font-weight:700}
+.hint{font-weight:400;color:var(--mut);font-size:12px}
+.kpi{position:relative;overflow:hidden;--k:var(--acc);transition:transform .2s,box-shadow .2s}
+.kpi:hover{transform:translateY(-2px)}
+.kpi::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:var(--k)}
+.kpi::after{content:"";position:absolute;right:-26px;top:-26px;width:100px;height:100px;border-radius:50%;background:var(--k);opacity:.09}
+.kpis .kpi:nth-child(2){--k:var(--ok)}.kpis .kpi:nth-child(3){--k:#0ea5e9}.kpis .kpi:nth-child(4){--k:#f59e0b}.kpis .kpi:nth-child(5){--k:#8b5cf6}
+.kpi .l{color:var(--mut);font-size:12px;font-weight:600;letter-spacing:.02em}
+.kpi .v{font-size:clamp(23px,2.6vw,31px);font-weight:800;letter-spacing:-.025em;line-height:1.2;margin:4px 0 2px}
+.kpi .s{font-size:12px;color:var(--mut)}
+.charts{grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));margin-bottom:16px}
+.cv{position:relative;height:300px}.cv.tall{height:420px}
+.cv canvas{max-width:100%}
+table{width:100%;border-collapse:collapse}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;position:sticky;top:0;background:var(--card);cursor:pointer;user-select:none;z-index:1}
+td.n,th.n{text-align:right}
+tbody tr{transition:background .12s}tbody tr:hover{background:color-mix(in srgb,var(--acc) 6%,transparent)}
+tbody tr:last-child td{border-bottom:0}
+.scroll{max-height:540px;overflow:auto;-webkit-overflow-scrolling:touch;border-radius:10px}
+.badge{display:inline-block;padding:2px 11px;border-radius:99px;font-size:12px;font-weight:600;background:color-mix(in srgb,var(--c) 15%,transparent);color:var(--c)}
+.b-ok{--c:var(--ok)}.b-warn{--c:var(--warn)}.b-bad{--c:var(--bad)}.b-none{--c:var(--none)}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--fg);padding:8px 14px;border-radius:11px;cursor:pointer;font:inherit;font-weight:500;transition:transform .12s,box-shadow .15s,border-color .15s;min-height:38px}
+.btn:hover{border-color:var(--acc);box-shadow:var(--shadow)}.btn:active{transform:scale(.97)}
+.btn.pri{background:var(--acc);border-color:transparent;color:#fff;box-shadow:0 8px 18px -8px color-mix(in srgb,var(--acc) 80%,transparent)}
+.btn.del{color:var(--bad)}.btn.sm{padding:3px 10px;font-size:12px;min-height:30px;border-radius:9px}
+a.btn{text-decoration:none;display:inline-flex;align-items:center}
+.bar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}.bar .sp{flex:1}
+.bar input{min-width:min(100%,240px)}
+dialog{border:1px solid var(--line);border-radius:20px;background:var(--card);color:var(--fg);padding:24px;width:min(540px,94vw);box-shadow:0 30px 80px -20px rgba(0,0,0,.5)}
+dialog::backdrop{background:rgba(8,12,28,.55);backdrop-filter:blur(3px)}dialog h3{margin-top:0;font-size:17px}
+.f{display:grid;grid-template-columns:130px minmax(0,1fr);gap:10px 12px;align-items:center}.f textarea{min-height:68px;resize:vertical}
+.f input:disabled,.f select:disabled{opacity:.6}.acts{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+#toast{position:fixed;bottom:24px;left:50%;transform:translate(-50%,20px);background:var(--fg);color:var(--bg);padding:10px 20px;border-radius:99px;opacity:0;transition:.3s;pointer-events:none;z-index:50;box-shadow:var(--shadow);max-width:92vw}
+#toast.show{opacity:1;transform:translate(-50%,0)}#toast.err{background:var(--bad);color:#fff}
+#login{position:fixed;inset:0;z-index:60;place-items:center;padding:16px;background:#16241d}
+#login:not([hidden]){display:grid}
+#login .card{padding:28px;border-radius:22px;width:min(380px,100%)}
+#login .brand{color:var(--fg);margin-bottom:18px;padding:0}#login .brand small{color:var(--mut)}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--mut);flex-wrap:wrap}.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+.ro .adm,.ro .wr,.ro [data-a^=edit],.ro [data-a^=del],.ro [data-a=new]{display:none}
+section{animation:in .25s ease}@keyframes in{from{transform:translateY(6px)}to{transform:none}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* tablet: icon rail */
+@media(max-width:860px){
+  .app{grid-template-columns:76px minmax(0,1fr)}
+  .side{padding:16px 10px;align-items:center}
+  .side .brand span.t,.side-foot{display:none}.brand{padding:0}
+  nav button{justify-content:center;padding:12px}nav .lg{display:none}
+  nav button.on::before{left:-10px}
+  .top,main{padding-left:20px;padding-right:20px}
+}
+/* phone: bottom tab bar */
+@media(max-width:720px){
+  .app{display:block}
+  .side{position:fixed;inset:auto 0 0 0;height:auto;z-index:40;padding:6px 6px calc(6px + env(safe-area-inset-bottom));flex-direction:row;background:color-mix(in srgb,var(--side1) 94%,transparent);backdrop-filter:blur(14px);border-top:1px solid rgba(255,255,255,.08)}
+  .side .brand{display:none}
+  nav{flex-direction:row;width:100%;gap:2px;overflow-x:auto;scrollbar-width:none}nav::-webkit-scrollbar{display:none}
+  nav button{flex:1 0 58px;flex-direction:column;gap:3px;padding:7px 2px;font-size:10.5px;min-width:0;border-radius:10px}
+  nav button.on::before{display:none}nav button.on{background:rgba(255,255,255,.14)}
+  nav .lg{display:none}nav .sm{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .top{padding:10px 14px;gap:10px}
+  .ttl .logo{display:grid}h1{font-size:17px}
+  .filters{order:3;width:100%;display:grid;grid-template-columns:1fr 1.3fr 1.1fr;gap:8px}
+  .filters select{min-width:0;width:100%}
+  .user{margin-left:auto}#who{display:none}
+  main{padding:14px 14px calc(88px + env(safe-area-inset-bottom))}
+  .card{padding:14px 15px;border-radius:14px}
+  .grid,.kpis,.charts{gap:12px}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpis .kpi:first-child{grid-column:1/-1}
+  .kpi .v{font-size:22px}.kpi::after{display:none}
+  .cv{height:250px}.cv.tall{height:360px}
+  th,td{padding:9px 10px}.scroll{max-height:60vh}
+  .bar .sp{display:none}.bar>*{flex:0 1 auto}.bar input{flex:1 1 100%}
+  select,input,textarea{font-size:16px}
+  dialog{width:100%;max-width:none;margin:auto 0 0;border-radius:22px 22px 0 0;max-height:92dvh;padding:20px 18px calc(20px + env(safe-area-inset-bottom))}
+  .f{grid-template-columns:1fr;gap:4px}.f label{margin-top:8px;font-weight:600;color:var(--mut);font-size:12px}
+  .acts .btn{flex:1}
+  #toast{bottom:calc(84px + env(safe-area-inset-bottom))}
+}
+/* keep the row action buttons reachable while a wide table scrolls sideways */
+#ttbl td:last-child,#utbl td:last-child,#itbl td:last-child,#ktbl td:last-child,#dtbl td:last-child,
+#ttbl th:last-child,#utbl th:last-child,#itbl th:last-child,#ktbl th:last-child,#dtbl th:last-child{position:sticky;right:0;background:var(--card);box-shadow:-10px 0 12px -10px rgba(15,23,42,.18)}
+#mtbl td:last-child,#usbl td:last-child,#mtbl th:last-child,#usbl th:last-child{position:sticky;right:0;background:var(--card);box-shadow:-10px 0 12px -10px rgba(15,23,42,.18)}
+@media(pointer:coarse){.btn.sm{min-height:36px;padding:4px 12px}nav button{min-height:44px}}
+@media print{.side,.top .filters,.user,.btn,#toast,.icon-btn{display:none!important}.app{display:block}body{background:#fff;color:#000}.card{break-inside:avoid;box-shadow:none}main{padding:0}.top{position:static;border:0}}
+/* Jewellery-style dashboard visual system */
+:root{--bg:#f3f6fc;--card:#fff;--fg:#101a36;--mut:#67728a;--line:#e5eaf4;--acc:#1265ed;--acc2:#11a6ff;--ok:#20b95f;--warn:#ff9d12;--bad:#ef3e69;--none:#aeb8ca;--side1:#031b48;--side2:#031b48;--shadow:0 4px 14px rgba(23,44,90,.08);--r:9px}
+:root[data-theme=dark]{--bg:#0b1530;--card:#132044;--fg:#f5f8ff;--mut:#afbdd8;--line:#26365e;--acc:#3880ff;--acc2:#3fc4ff;--ok:#48d479;--warn:#ffbd42;--bad:#ff7294;--none:#71809e;--side1:#06152f;--side2:#06152f;--shadow:0 4px 16px rgba(0,0,0,.24)}
+.app{grid-template-columns:202px minmax(0,1fr);background:var(--bg)}
+.side{background:var(--side1);color:#c9d5ed;padding:12px 10px;border:0;gap:18px;box-shadow:none}.brand{color:#fff;font-size:13px;padding:0 8px}.brand small{color:#f7c94d;font-size:9px;margin-top:3px}.logo{width:34px;height:34px;border-radius:8px;background:#f8c733;color:#0c1d42;font-size:16px;box-shadow:none}
+nav{gap:3px}nav button{color:#d8e2f5;border-radius:5px;padding:9px 10px;font-size:12px}nav button:hover{background:#0a4eaf;color:#fff}nav button.on{background:linear-gradient(90deg,#0878ff,#1364e8);color:#fff;box-shadow:0 3px 9px rgba(0,74,190,.35)}nav button.on::before{display:none}.side-foot{color:#8fa8d5;border-top:1px solid rgba(255,255,255,.12);padding:12px 8px 0}
+.top{position:sticky;padding:12px 28px;background:#04132d;color:#fff;border-bottom:0;gap:14px;box-shadow:0 2px 10px rgba(5,18,45,.15)}.ttl{gap:8px}.ttl .logo{display:grid}h1{font-size:16px;font-weight:700}.filters{gap:8px}.filters label{color:#c3d0e8;font-size:9px;text-transform:none;letter-spacing:0}.filters select{min-width:104px;padding:7px 10px;border:1px solid #dfe5f0;border-radius:8px;background:#fff;color:#1b2741;font-size:12px}.icon-btn{width:34px;height:34px;border:1px solid #dfe5f0;border-radius:8px;background:#fff;color:#08204a;box-shadow:none}#who{color:#c3d0e8;font-size:11px}.btn{border:1px solid #dfe5f0;border-radius:7px;padding:8px 12px;font-size:12px;box-shadow:none}.btn.pri{background:#1265ed;box-shadow:0 4px 10px rgba(18,101,237,.22)}
+main{max-width:1600px;padding:14px 24px 34px}.grid{gap:12px}.kpis{grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-bottom:12px}.card{border:1px solid #e8edf5;border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow)}.card h3{font-size:12px;margin-bottom:9px}.kpi{min-height:108px;padding:14px 15px;border:0;color:#fff;box-shadow:0 5px 14px rgba(20,38,100,.12)}.kpi::before{height:0}.kpi::after{width:86px;height:86px;right:-24px;top:-26px;background:#fff;opacity:.12}.kpis .kpi:nth-child(1){--k:#6541f5;background:linear-gradient(135deg,#7957f6,#4030cf)}.kpis .kpi:nth-child(2){--k:#10bf6c;background:linear-gradient(135deg,#0dcc71,#049a59)}.kpis .kpi:nth-child(3){--k:#ff8c12;background:linear-gradient(135deg,#ff9f1c,#f56b0b)}.kpis .kpi:nth-child(4){--k:#1374ed;background:linear-gradient(135deg,#218bff,#0753ce)}.kpis .kpi:nth-child(5){--k:#ef3970;background:linear-gradient(135deg,#fa4d8b,#d70d5e)}.kpis .kpi:nth-child(6){--k:#0fc2c1;background:linear-gradient(135deg,#19c7c5,#078f9d)}.kpi .l,.kpi .s{color:rgba(255,255,255,.8)}.kpi .l{font-size:10px;letter-spacing:0}.kpi .v,.kpi .v[style]{color:#fff!important;font-size:clamp(20px,2.2vw,27px);margin-top:7px}.kpi .s{font-size:10px}.charts{grid-template-columns:minmax(0,1.35fr) minmax(300px,.95fr);gap:12px;margin-bottom:12px}.cv{height:276px}.cv.tall{height:360px}.scroll{border-radius:7px}th,td{padding:8px 9px}th{font-size:10px;background:var(--card)}.badge{padding:3px 8px;font-size:10px}.bar{margin-bottom:10px}.legend{font-size:10px;gap:9px}
+#login{background:radial-gradient(700px 360px at 100% 0%,#1265ed66,transparent),linear-gradient(135deg,#061a42,#020b20)}#login .card{border-radius:14px;box-shadow:0 22px 70px rgba(0,0,0,.3)}#login .logo{background:#f8c733}
+@media(max-width:860px){.app{grid-template-columns:72px minmax(0,1fr)}.side{padding:16px 10px}.top,main{padding-left:20px;padding-right:20px}}
+@media(max-width:720px){.side{background:var(--side1);border-top:1px solid rgba(255,255,255,.12);box-shadow:0 -4px 16px rgba(2,10,30,.3)}nav button{color:#d8e2f5}nav button.on{background:#1265ed;color:#fff;box-shadow:none}.top{padding:10px 14px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpis .kpi:first-child{grid-column:1/-1}.charts{grid-template-columns:1fr}.card{padding:14px}.kpi{min-height:0}.cv{height:245px}.cv.tall{height:330px}}
+h1,h2,h3{letter-spacing:0}
+/* First viewport matches the reference dashboard proportions. */
+.app{grid-template-columns:160px minmax(0,1fr)}
+.side{padding:10px 8px;gap:14px}
+.brand{padding:0 5px;font-size:11px}.brand small{font-size:8px}
+.logo{width:30px;height:30px;font-size:14px}.top{padding:7px 18px}.top .logo{width:32px;height:32px}
+.filters label{font-size:8px}.filters select{min-width:96px;padding:6px 8px}
+.kpis{grid-template-columns:repeat(6,minmax(0,1fr))}.kpi{min-height:108px;padding:13px 12px}
+.kpi .v,.kpi .v[style]{font-size:clamp(18px,1.75vw,25px)}
+.charts{grid-template-columns:repeat(3,minmax(0,1fr))}.cv,.cv.tall{height:270px}
+@media (max-width:1100px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.charts{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:860px){.app{grid-template-columns:72px minmax(0,1fr)}.charts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:720px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.charts{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="side">
+  <div class="brand"><div class="logo">💊</div><span class="t">มูลค่ายาคงคลัง<small>Executive Dashboard</small></span></div>
+  <nav id="nav">
+    <button data-t="exe"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span class="lg">สรุปผู้บริหาร</span><span class="sm">สรุป</span></button>
+    <button data-t="dash" class="on"><svg viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg><span class="lg">ภาพรวม</span><span class="sm">ภาพรวม</span></button>
+    <button data-t="txn"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span class="lg">ข้อมูลรายเดือน</span><span class="sm">รายเดือน</span></button>
+    <button data-t="unit"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14M12 8v5M9.5 10.5h5M10 21v-4h4v4"/></svg><span class="lg">หน่วยบริการ</span><span class="sm">หน่วย</span></button>
+    <button data-t="ins"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg><span class="lg">Key Insights</span><span class="sm">Insights</span></button>
+    <button data-t="kpi"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg><span class="lg">เป้าหมาย KPI</span><span class="sm">KPI</span></button>
+    <button data-t="mp"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h4"/></svg><span class="lg">Master Prompt</span><span class="sm">Prompt</span></button>
+    <button data-t="usr" class="adm"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.5 3.3-5.5 6.5-5.5s5.9 2 6.5 5.5M17 4.5a3.5 3.5 0 0 1 0 7M21.5 20c-.4-2.4-1.8-4-3.8-4.8"/></svg><span class="lg">จัดการผู้ใช้</span><span class="sm">ผู้ใช้</span></button>
+  </nav>
+  <div class="side-foot">ปีงบประมาณ · สำนักงานสาธารณสุข</div>
+</aside>
+<div class="content">
+<header class="top">
+  <div class="ttl"><div class="logo">💊</div><h1 id="page-title">ภาพรวม</h1></div>
+  <div class="filters">
+    <label>ปีงบประมาณ<select id="fy"></select></label>
+    <label>เดือน<select id="mo"></select></label>
+    <label>อำเภอ<select id="dist"></select></label>
+  </div>
+  <div class="user"><span id="who"></span><button class="icon-btn" id="theme" title="สลับธีมสว่าง/มืด" aria-label="สลับธีม">◐</button><button class="btn sm" id="logout" hidden>ออกจากระบบ</button></div>
+</header>
+<main>
+<section id="t-exe" hidden>
+  <div class="bar"><h2 style="margin:0;font-size:16px;font-weight:600;color:var(--mut)" id="exe-title"></h2><span class="sp"></span><button class="btn" onclick="window.print()">🖨 พิมพ์ / PDF</button></div>
+  <div class="grid kpis" id="exe-kpis"></div>
+  <div class="card" style="margin-bottom:16px"><h3>ประเด็นสำคัญสำหรับผู้บริหาร</h3><ul id="exe-bullets" style="margin:0;padding-left:20px"></ul></div>
+  <div class="grid charts">
+    <div class="card"><h3>อันดับอำเภอ <span class="hint">% หน่วยที่อยู่ในเกณฑ์ (เขียว)</span></h3><div class="scroll"><table id="exe-dist"></table></div></div>
+    <div class="card"><h3>หน่วยที่ต้องติดตาม <span class="hint">ห่างจากเกณฑ์มากที่สุด 10 อันดับ</span></h3><div class="scroll"><table id="exe-worst"></table></div></div>
+    <div class="card"><h3>หน่วยที่ยังไม่รายงาน <span class="hint" id="exe-nr-n"></span></h3><div class="scroll" style="max-height:300px"><table id="exe-nr"></table></div></div>
+  </div>
+</section>
+<section id="t-dash">
+  <div class="grid kpis" id="kpis"></div>
+  <div class="grid charts">
+    <div class="card"><h3>แนวโน้มรายเดือน <span class="hint">แท่ง = เบิกจ่าย (A), เส้น = คงคลัง (B)</span></h3><div class="cv"><canvas id="c-trend"></canvas></div></div>
+    <div class="card"><h3>สถานะหน่วยบริการ <span class="hint">เทียบเกณฑ์ KPI</span></h3><div class="cv"><canvas id="c-stat"></canvas></div></div>
+    <div class="card"><h3>อัตราคงคลัง (เดือน) รายอำเภอ <span class="hint">แตะแท่งเพื่อกรองอำเภอ</span></h3><div class="cv tall"><canvas id="c-dist"></canvas></div></div>
+  </div>
+  <div class="card">
+    <div class="bar"><h3 style="margin:0">รายหน่วยบริการ <span class="hint" id="tblhint"></span></h3><span class="sp"></span>
+      <div class="legend"><span><i style="background:var(--ok)"></i>ตามเกณฑ์</span><span><i style="background:var(--warn)"></i>เฝ้าระวัง</span><span><i style="background:var(--bad)"></i>ผิดเกณฑ์</span><span><i style="background:var(--none)"></i>ไม่มีข้อมูล</span></div></div>
+    <div class="scroll"><table id="dtbl"></table></div>
+  </div>
+</section>
+
+<section id="t-txn" hidden><div class="card">
+  <div class="bar"><input id="q-txn" placeholder="ค้นหาหน่วยบริการ / รหัส…"><span class="sp"></span><span class="hint" id="txn-count"></span><a class="btn" href="/api/export/transactions.csv">⬇ CSV</a><button class="btn pri wr" id="add-txn">+ เพิ่มข้อมูล</button></div>
+  <div class="scroll"><table id="ttbl"></table></div></div></section>
+
+<section id="t-unit" hidden><div class="card">
+  <div class="bar"><input id="q-unit" placeholder="ค้นหาหน่วยบริการ…"><span class="sp"></span><span class="hint" id="unit-count"></span><a class="btn" href="/api/export/units.csv">⬇ CSV</a><button class="btn pri wr" id="add-unit">+ เพิ่มหน่วยบริการ</button></div>
+  <div class="scroll"><table id="utbl"></table></div></div></section>
+
+<section id="t-ins" hidden><div class="card">
+  <div class="bar"><span class="sp"></span><a class="btn" href="/api/export/insights.csv">⬇ CSV</a><button class="btn pri wr" id="add-ins">+ เพิ่ม Insight</button></div>
+  <div class="scroll"><table id="itbl"></table></div></div></section>
+
+<section id="t-kpi" hidden><div class="card">
+  <div class="bar"><span class="hint">ช่วงอัตราคงคลัง (เดือน): เขียว = ตามเกณฑ์, เหลือง = เฝ้าระวัง, นอกช่วง = ผิดเกณฑ์ · ปีงบ 0 = ค่าเริ่มต้น</span><span class="sp"></span><a class="btn" href="/api/export/kpi_targets.csv">⬇ CSV</a><button class="btn pri wr" id="add-kpi">+ เพิ่มเป้าหมาย</button></div>
+  <div class="scroll"><table id="ktbl"></table></div></div></section>
+
+<section id="t-mp" hidden>
+  <div class="card" style="margin-bottom:16px">
+    <div class="bar"><h3 style="margin:0">สรุปให้ผู้บริหารในรูปแบบ Master Prompt</h3><span class="sp"></span><label class="hint">เทมเพลต <select id="mp-sel"></select></label></div>
+    <p class="hint" id="mp-purpose" style="margin:0 0 4px"></p>
+    <p class="hint" style="margin:0 0 10px">ดึงข้อมูลจากหน้าสรุปผู้บริหารตามตัวกรองด้านบน (<b id="mp-scope"></b>) นำ Prompt ที่ได้ไปวางในเครื่องมือ AI ที่ใช้งาน</p>
+    <textarea id="mp-out" readonly rows="16" style="width:100%;font:12.5px/1.65 ui-monospace,Menlo,Consolas,'Noto Sans Thai',monospace"></textarea>
+    <div class="acts"><span class="hint" id="mp-meta" style="margin-right:auto;align-self:center"></span><button class="btn" id="mp-dl">⬇ ดาวน์โหลด .txt</button><button class="btn pri" id="mp-copy">คัดลอก Prompt</button></div>
+  </div>
+  <div class="card">
+    <div class="bar"><h3 style="margin:0">เทมเพลต Master Prompt</h3><span class="sp"></span><button class="btn pri wr" id="add-mp">+ เพิ่มเทมเพลต</button></div>
+    <p class="hint" style="margin:0 0 10px">ตัวแปรที่ใช้ได้: <code id="mp-vars"></code></p>
+    <div class="scroll"><table id="mtbl"></table></div>
+  </div>
+</section>
+
+<section id="t-usr" hidden><div class="card">
+  <div class="bar"><span class="hint">ผู้ดูแลระบบ = เพิ่ม/แก้ไข/ลบข้อมูลได้ · ผู้ดูข้อมูล = ดูและส่งออกได้อย่างเดียว</span><span class="sp"></span><button class="btn pri" id="add-usr">+ เพิ่มผู้ใช้</button></div>
+  <div class="scroll"><table id="usbl"></table></div></div></section>
+</main>
+</div>
+</div>
+
+<div id="login" hidden>
+  <form id="lf" class="card"><div class="brand"><div class="logo">💊</div><span class="t">มูลค่ายาคงคลัง<small>เข้าสู่ระบบเพื่อใช้งาน Dashboard</small></span></div>
+    <div class="f" style="grid-template-columns:90px minmax(0,1fr)"><label>ผู้ใช้</label><input name="username" autocomplete="username" required><label>รหัสผ่าน</label><input name="password" type="password" autocomplete="current-password" required></div>
+    <div id="lerr" style="color:var(--bad);margin-top:8px;min-height:20px"></div>
+    <div class="acts"><button class="btn pri" type="submit" style="width:100%">เข้าสู่ระบบ</button></div></form></div>
+
+<dialog id="dlg"><form method="dialog" id="frm"><h3 id="dlg-t"></h3><div class="f" id="dlg-f"></div>
+  <div class="acts"><button class="btn" value="cancel" type="button" id="dlg-x">ยกเลิก</button><button class="btn pri" type="submit">บันทึก</button></div></form></dialog>
+<div id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const MONTHS = ['ตุลาคม','พฤศจิกายน','ธันวาคม','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน'];
+const fmt = (n, d = 0) => n == null ? '–' : Number(n).toLocaleString('th-TH', { maximumFractionDigits: d, minimumFractionDigits: d });
+const S = { units: [], txns: [], insights: [], kpi: {}, fy: null, mo: null, dist: '', sort: {} };
+const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+async function api(method, path, body) {
+  const r = await fetch('/api/' + path, { method, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  const j = await r.json();
+  if (r.status === 401 && path !== 'login') showLogin();
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+function showLogin() { $('#login').hidden = false; $('#lf').elements.password.value = ''; }
+function setUser(me) {
+  S.me = me; $('#login').hidden = true;
+  $('#who').textContent = `${me.username} (${me.role === 'admin' ? 'แก้ไขได้' : 'ดูอย่างเดียว'})`;
+  $('#logout').hidden = false; document.body.classList.toggle('ro', me.role !== 'admin');
+}
+$('#lf').onsubmit = async e => {
+  e.preventDefault(); $('#lerr').textContent = '';
+  try { setUser(await api('POST', 'login', { username: e.target.elements.username.value, password: e.target.elements.password.value })); await load(); }
+  catch (err) { $('#lerr').textContent = err.message; }
+};
+$('#logout').onclick = async () => { await api('POST', 'logout'); location.reload(); };
+function toast(msg, err) { const t = $('#toast'); t.textContent = msg; t.className = 'show' + (err ? ' err' : ''); clearTimeout(toast.h); toast.h = setTimeout(() => t.className = '', 2600); }
+async function guard(fn) { try { await fn(); } catch (e) { toast(e.message, true); } }
+
+async function load() {
+  const admin = S.me?.role === 'admin';
+  const [u, t, i, k, p, us] = await Promise.all([api('GET', 'units'), api('GET', 'transactions'), api('GET', 'insights'), api('GET', 'kpi_targets'), api('GET', 'master_prompts'), admin ? api('GET', 'users') : []]);
+  S.units = u; S.txns = t; S.insights = i; S.prompts = p; S.users = us;
+  S.kpi = k.find(x => x.fiscal_year === S.fy) || k.find(x => x.fiscal_year === 0) || { green_min: 2, green_max: 3, warn_low: 1, warn_high: 4 };
+  S.allKpi = k;
+  renderFilters(); render();
+}
+
+// status by months of stock (B/A) against the KPI band
+function status(a, b) {
+  if (b == null || !a) return b == null ? 'none' : 'bad';
+  const m = b / a, k = S.kpi;
+  if (m >= k.green_min && m <= k.green_max) return 'ok';
+  if (m >= k.warn_low && m <= k.warn_high) return 'warn';
+  return 'bad';
+}
+const SL = { ok: 'ตามเกณฑ์', warn: 'เฝ้าระวัง', bad: 'ผิดเกณฑ์', none: 'ไม่มีข้อมูล' };
+const badge = s => `<span class="badge b-${s}">${SL[s]}</span>`;
+const mName = m => m === 0 ? 'ทั้งปีงบ' : MONTHS[m - 1] || m;
+// rows of one fiscal year; mo = 0 means "all months": each unit's months are averaged so A and B stay monthly figures
+function rowsFor(fy, mo, keep) {
+  const rows = S.txns.filter(t => t.fiscal_year === fy && keep(t));
+  if (mo) return rows.filter(t => t.month_no === mo);
+  const by = {};
+  rows.forEach(t => (by[t.unit_id] ||= []).push(t));
+  return Object.entries(by).map(([unit_id, ts]) => {
+    const avg = k => ts.reduce((s, t) => s + (t[k] || 0), 0) / ts.length;
+    return { unit_id, fiscal_year: fy, month_no: 0, disbursed_A: avg('disbursed_A'), stock_B: avg('stock_B'), reserve_C: avg('reserve_C'), txn_id: null };
+  });
+}
+const unitMap = () => Object.fromEntries(S.units.map(u => [u.unit_id, u]));
+
+function renderFilters() {
+  const fys = [...new Set(S.txns.map(t => t.fiscal_year))].sort((a, b) => b - a);
+  if (!fys.length) fys.push(new Date().getFullYear() + 543);
+  if (S.fy == null) {
+    // first load: default to the latest month where at least half of the active units reported
+    const nAct = S.units.filter(u => u.active === 'Y').length, cnt = {};
+    S.txns.forEach(t => { const k = t.fiscal_year * 100 + t.month_no; cnt[k] = (cnt[k] || 0) + 1; });
+    const best = Object.keys(cnt).map(Number).filter(k => cnt[k] >= nAct * 0.5).sort((a, b) => b - a)[0];
+    if (best) { S.fy = Math.floor(best / 100); S.mo = best % 100; }
+  }
+  if (!fys.includes(S.fy)) S.fy = fys[0];
+  $('#fy').innerHTML = fys.map(y => `<option ${y === S.fy ? 'selected' : ''}>${y}</option>`).join('');
+  const ms = [...new Set(S.txns.filter(t => t.fiscal_year === S.fy).map(t => t.month_no))].sort((a, b) => a - b);
+  if (S.mo !== 0 && !ms.includes(S.mo)) S.mo = ms.length ? ms[ms.length - 1] : 1;
+  $('#mo').innerHTML = `<option value="0" ${S.mo === 0 ? 'selected' : ''}>ข้อมูลทั้งหมด</option>` + (ms.length ? ms : [1]).map(m => `<option value="${m}" ${m === S.mo ? 'selected' : ''}>${mName(m)}</option>`).join('');
+  const ds = [...new Set(S.units.map(u => u.district))].sort((a, b) => a.localeCompare(b, 'th'));
+  $('#dist').innerHTML = '<option value="">ทั้งจังหวัด</option>' + ds.map(d => `<option ${d === S.dist ? 'selected' : ''}>${esc(d)}</option>`).join('');
+  S.kpi = S.allKpi.find(x => x.fiscal_year === S.fy) || S.allKpi.find(x => x.fiscal_year === 0) || S.kpi;
+}
+
+let charts = {};
+function chart(id, cfg) { charts[id]?.destroy(); charts[id] = new Chart($('#' + id), cfg); }
+
+function render() {
+  const um = unitMap();
+  const inDist = u => !S.dist || u?.district === S.dist;
+  const fyRows = S.txns.filter(t => t.fiscal_year === S.fy && inDist(um[t.unit_id]));
+  const all = S.mo === 0;
+  const moRows = rowsFor(S.fy, S.mo, t => inDist(um[t.unit_id]));
+  const activeUnits = S.units.filter(u => u.active === 'Y' && inDist(u));
+  const sum = (rows, k) => rows.reduce((s, r) => s + (r[k] || 0), 0);
+  const A = sum(moRows, 'disbursed_A'), B = sum(moRows, 'stock_B'), C = sum(moRows, 'reserve_C');
+  const months = A ? B / A : null, st = status(A, B);
+  const reported = new Set(moRows.map(r => r.unit_id)).size;
+  $('#kpis').innerHTML = [
+    ['หน่วยที่รายงาน', `${reported}/${activeUnits.length}`, `${activeUnits.length ? fmt(reported / activeUnits.length * 100, 1) : 0}% ของหน่วยที่เปิดใช้งาน`],
+    all ? ['เบิกจ่าย (A) รวมปีงบ', fmt(sum(fyRows, 'disbursed_A')) + ' ฿', `เฉลี่ยเดือนละ ${fmt(A)} ฿`]
+        : ['เบิกจ่าย (A) เดือนนี้', fmt(A) + ' ฿', `สะสมปีงบ ${fmt(sum(fyRows, 'disbursed_A'))} ฿`],
+    all ? ['คงคลัง (B) เฉลี่ย/เดือน', fmt(B) + ' ฿', `ทั้งปีงบ ${S.fy}`]
+        : ['คงคลัง (B) เดือนนี้', fmt(B) + ' ฿', `${mName(S.mo)} ปี ${S.fy}`],
+    ['อัตราคงคลัง', months == null ? '–' : fmt(months, 2) + ' เดือน', `เกณฑ์ ${S.kpi.green_min}–${S.kpi.green_max} เดือน · ${SL[st]}`],
+    ['เงินสำรอง (C)', fmt(C) + ' ฿', all ? `เฉลี่ยต่อเดือน ปีงบ ${S.fy}` : `${mName(S.mo)} ปี ${S.fy}`],
+    ['หน่วยเปิดใช้งาน', fmt(activeUnits.length) + ' หน่วย', `รายงานแล้ว ${reported} หน่วย`],
+  ].map(([l, v, s], i) => `<div class="card kpi"><div class="l">${l}</div><div class="v" ${i === 3 ? `style="color:var(--${st === 'none' ? 'none' : st})"` : ''}>${v}</div><div class="s">${s}</div></div>`).join('');
+
+  // trend (follows district filter, whole fiscal year)
+  const tm = [...new Set(fyRows.map(r => r.month_no))].sort((a, b) => a - b);
+  const mA = tm.map(m => sum(fyRows.filter(r => r.month_no === m), 'disbursed_A'));
+  const mB = tm.map(m => sum(fyRows.filter(r => r.month_no === m), 'stock_B'));
+  const mut = cssv('--mut'), line = cssv('--line');
+  Chart.defaults.maintainAspectRatio = false;
+  Chart.defaults.font.family = '"Inter","Noto Sans Thai",sans-serif';
+  const ax = { ticks: { color: mut, maxRotation: 0, autoSkipPadding: 12 }, grid: { color: line, drawTicks: false }, border: { display: false } };
+  const scales = { x: { ...ax, ticks: { ...ax.ticks, autoSkip: innerWidth <= 560, font: { size: innerWidth <= 560 ? 10 : 12 } }, grid: { display: false } }, y: { ...ax, ticks: { ...ax.ticks, callback: v => fmt(v) } } };
+  const tip = { backgroundColor: cssv('--fg'), titleColor: cssv('--bg'), bodyColor: cssv('--bg'), padding: 10, cornerRadius: 10, boxPadding: 4 };
+  const legend = { labels: { color: mut, usePointStyle: true, boxWidth: 8, padding: 14 } };
+  const SHORT = ['ต.ค.', 'พ.ย.', 'ธ.ค.', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.'];
+  chart('c-trend', { data: { labels: tm.map(m => SHORT[m - 1]), datasets: [
+    { type: 'bar', label: 'เบิกจ่าย (A)', data: mA, backgroundColor: cssv('--acc') + 'cc', borderRadius: 8, maxBarThickness: 38 },
+    { type: 'line', label: 'คงคลัง (B)', data: mB, borderColor: cssv('--warn'), backgroundColor: cssv('--warn'), borderWidth: 2.5, pointRadius: 3, pointHoverRadius: 6, tension: .35 } ] },
+    options: { responsive: true, interaction: { mode: 'index', intersect: false }, scales, plugins: { legend, tooltip: { ...tip, callbacks: { label: c => `${c.dataset.label}: ${fmt(c.parsed.y)} ฿` } } }, onClick: (e, els) => { if (els.length) { S.mo = tm[els[0].index]; $('#mo').value = S.mo; render(); } } } });
+
+  // districts for selected month (ignores district filter so you can pick another)
+  const ds = [...new Set(S.units.map(u => u.district))].sort((a, b) => a.localeCompare(b, 'th'));
+  const allMo = rowsFor(S.fy, S.mo, () => true);
+  const dv = ds.map(d => { const r = allMo.filter(t => um[t.unit_id]?.district === d); const a = sum(r, 'disbursed_A'), b = sum(r, 'stock_B'); return { d, a, b, m: a ? b / a : 0 }; });
+  chart('c-dist', { type: 'bar', data: { labels: ds, datasets: [{ data: dv.map(x => +x.m.toFixed(2)), backgroundColor: dv.map(x => cssv('--' + (st2 => st2 === 'none' ? 'none' : st2)(status(x.a, x.b)))), borderWidth: dv.map(x => x.d === S.dist ? 3 : 0), borderColor: cssv('--fg'), borderRadius: 8, borderSkipped: false, maxBarThickness: 22 }] },
+    options: { indexAxis: 'y', scales: { x: scales.y, y: { ...scales.x, ticks: { ...ax.ticks, autoSkip: false, font: { size: 12 } } } }, plugins: { legend: { display: false }, tooltip: { ...tip, callbacks: { label: c => `${c.parsed.x} เดือน` } } },
+      onClick: (e, els) => { if (els.length) { const d = ds[els[0].index]; S.dist = S.dist === d ? '' : d; $('#dist').value = S.dist; render(); } } } });
+
+  // status per unit
+  const latest = Object.fromEntries(moRows.map(r => [r.unit_id, r]));
+  const rows = activeUnits.map(u => { const r = latest[u.unit_id]; return { u, r, s: r ? status(r.disbursed_A, r.stock_B) : 'none' }; });
+  const cnt = k => rows.filter(x => x.s === k).length;
+  chart('c-stat', { type: 'doughnut', data: { labels: Object.values(SL), datasets: [{ data: ['ok', 'warn', 'bad', 'none'].map(cnt), backgroundColor: ['ok', 'warn', 'bad', 'none'].map(k => cssv('--' + k)), borderColor: cssv('--card'), borderWidth: 4, borderRadius: 6, hoverOffset: 6 }] },
+    options: { cutout: '68%', plugins: { legend: { ...legend, position: 'bottom' }, tooltip: { ...tip, callbacks: { label: c => `${c.label}: ${c.parsed} หน่วย` } } } } });
+
+  // detail table
+  S.dRows = rows.map(({ u, r, s }) => ({ unit_id: u.unit_id, unit_name: u.unit_name, district: u.district, A: r?.disbursed_A, B: r?.stock_B, C: r?.reserve_C, m: r?.disbursed_A ? r.stock_B / r.disbursed_A : null, s, txn: r?.txn_id }));
+  $('#tblhint').textContent = `${mName(S.mo)} ${S.fy}${all ? ' · ค่าเฉลี่ยต่อเดือน' : ''}${S.dist ? ' · ' + S.dist : ''} (${rows.length} หน่วย)`;
+  drawTable('#dtbl', 'd', S.dRows, [['unit_name', 'หน่วยบริการ'], ['district', 'อำเภอ'], ['A', 'เบิกจ่าย A', 1], ['B', 'คงคลัง B', 1], ['C', 'สำรอง C', 1], ['m', 'เดือน', 1], ['s', 'สถานะ']],
+    (r, k) => k === 's' ? badge(r.s) : k === 'm' ? fmt(r.m, 2) : (k === 'A' || k === 'B') ? fmt(r[k], 2) : k === 'C' ? fmt(r.C, 2) : esc(r[k]),
+    r => all ? '' : `<button class="btn sm" data-a="${r.txn ? 'edit' : 'new'}" data-id="${esc(r.txn || r.unit_id)}">${r.txn ? 'แก้ไข' : 'เพิ่มข้อมูล'}</button>`);
+  renderTxn(); renderUnits(); renderIns(); renderKpi(); renderExe(); renderMp(); renderUsr();
+}
+
+// ---- Master Prompt: fills the template's {{placeholders}} with what the executive page currently shows ----
+const MP_VARS = ['ขอบเขต', 'เกณฑ์ KPI', 'ตัวชี้วัดหลัก', 'ประเด็นสำคัญ', 'อันดับอำเภอ', 'หน่วยที่ต้องติดตาม', 'หน่วยที่ยังไม่รายงาน', 'Key Insights'];
+function mpValues() {
+  const cells = tr => [...tr.children].map(c => c.textContent.trim()).join(' | ');
+  const lines = (sel, skipHeader) => [...document.querySelectorAll(sel + (skipHeader ? ' tbody tr' : ' tr'))].map(cells).filter(Boolean);
+  const list = a => a.length ? a.map(x => '- ' + x).join('\n') : '- (ไม่มี)';
+  const header = sel => cells(document.querySelector(sel + ' thead tr'));
+  const k = S.kpi, ins = S.insights.filter(i => i.status !== 'เสร็จสิ้น');
+  const dist = lines('#exe-dist', true), worst = lines('#exe-worst', true), nr = lines('#exe-nr', true);
+  return {
+    'ขอบเขต': $('#exe-title').textContent + (S.mo === 0 ? ' (ตัวเลข A และ B เป็นค่าเฉลี่ยต่อเดือน)' : ''),
+    'เกณฑ์ KPI': `อัตราคงคลัง = มูลค่าคงคลัง (B) ÷ มูลค่าเบิกจ่าย (A) หน่วยเป็นเดือน · ตามเกณฑ์ ${k.green_min}–${k.green_max} เดือน · เฝ้าระวัง ${k.warn_low}–${k.warn_high} เดือน · นอกช่วงนี้ผิดเกณฑ์`,
+    'ตัวชี้วัดหลัก': list([...document.querySelectorAll('#exe-kpis .kpi')].map(c => `${c.querySelector('.l').textContent}: ${c.querySelector('.v').textContent.trim()} (${c.querySelector('.s').innerHTML.replace(/<br\s*\/?>/gi, ' · ').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()})`)),
+    'ประเด็นสำคัญ': list([...document.querySelectorAll('#exe-bullets li')].map(l => l.textContent.trim())),
+    'อันดับอำเภอ': dist.length ? `${header('#exe-dist')}\n${list(dist)}` : '- (ไม่มีข้อมูล)',
+    'หน่วยที่ต้องติดตาม': worst.length ? `${header('#exe-worst')}\n${list(worst)}` : '- (ไม่มี)',
+    'หน่วยที่ยังไม่รายงาน': nr.length ? `${nr.length} หน่วย: ` + nr.map(x => x.replace(' | ', ' อ.')).join(', ') : 'รายงานครบทุกหน่วย',
+    'Key Insights': list(ins.map(i => `[${i.priority || '-'}] ${i.title}${i.insight ? ' — ' + i.insight : ''}${i.action ? ' → ' + i.action : ''}`)),
+  };
+}
+const mpBuild = tpl => { const v = mpValues(); return tpl.replace(/\{\{([^}]+)\}\}/g, (m, key) => v[key.trim()] ?? m); };
+function renderMp() {
+  const act = (S.prompts || []).filter(p => p.status !== 'ปิด');
+  const sel = $('#mp-sel'), keep = sel.value;
+  sel.innerHTML = act.map(p => `<option value="${esc(p.id)}">${esc(p.title)}</option>`).join('') || '<option value="">(ยังไม่มีเทมเพลต)</option>';
+  if (act.some(p => p.id === keep)) sel.value = keep;
+  const p = act.find(x => x.id === sel.value);
+  $('#mp-purpose').textContent = p?.purpose || '';
+  $('#mp-scope').textContent = $('#exe-title').textContent.replace('รายงานผู้บริหาร · ', '');
+  const out = p ? mpBuild(p.prompt) : '';
+  $('#mp-out').value = out;
+  $('#mp-meta').textContent = out ? `${fmt(out.length)} ตัวอักษร (ประมาณ ${fmt(Math.ceil(out.length / 3))} โทเคน)` : '';
+  $('#mp-vars').innerHTML = MP_VARS.map(v => `{{${esc(v)}}}`).join(' · ');
+  drawTable('#mtbl', 'm', S.prompts || [], [['title', 'ชื่อเทมเพลต'], ['category', 'หมวด'], ['purpose', 'วัตถุประสงค์'], ['status', 'สถานะ'], ['updated_at', 'อัปเดต']],
+    (r, k) => k === 'purpose' ? `<div style="white-space:normal;max-width:360px">${esc(r.purpose)}</div>` : k === 'status' ? `<span class="badge b-${r.status === 'ปิด' ? 'none' : 'ok'}">${esc(r.status)}</span>` : esc(r[k]),
+    r => `<button class="btn sm" data-a="edit-mp" data-id="${esc(r.id)}">แก้ไข</button> <button class="btn sm del" data-a="del-mp" data-id="${esc(r.id)}">ลบ</button>`);
+}
+function mpForm(p) {
+  form(p ? 'แก้ไขเทมเพลต' : 'เพิ่มเทมเพลต Master Prompt', [
+    { k: 'title', l: 'ชื่อเทมเพลต', req: 1 }, { k: 'category', l: 'หมวด' }, { k: 'purpose', l: 'วัตถุประสงค์', area: 1 },
+    { hint: 'ตัวแปรที่ระบบเติมข้อมูลให้: ' + MP_VARS.map(v => `<code>{{${esc(v)}}}</code>`).join(' ') },
+    { k: 'prompt', l: 'เนื้อหา Prompt', area: 1, rows: 14, req: 1 }, { k: 'tags', l: 'แท็ก' }, { k: 'status', l: 'สถานะ', opts: ['ใช้งาน', 'ปิด'] }],
+    p || { status: 'ใช้งาน' },
+    fd => p ? api('PUT', 'master_prompts/' + p.id, fd) : api('POST', 'master_prompts', fd));
+}
+
+// ---- user management (admin) ----
+function renderUsr() {
+  drawTable('#usbl', 'us', S.users || [], [['username', 'ชื่อผู้ใช้'], ['role', 'สิทธิ์']],
+    (r, k) => k === 'role' ? `<span class="badge b-${r.role === 'admin' ? 'ok' : 'none'}">${r.role === 'admin' ? 'ผู้ดูแลระบบ' : 'ผู้ดูข้อมูล'}</span>` : esc(r.username) + (r.username === S.me?.username ? ' <span class="hint">(คุณ)</span>' : ''),
+    r => `<button class="btn sm" data-a="edit-usr" data-id="${esc(r.username)}">แก้ไข / เปลี่ยนรหัสผ่าน</button> ${r.username === S.me?.username ? '' : `<button class="btn sm del" data-a="del-usr" data-id="${esc(r.username)}">ลบ</button>`}`);
+}
+function usrForm(u) {
+  form(u ? `แก้ไขผู้ใช้ ${u.username}` : 'เพิ่มผู้ใช้', [
+    { k: 'username', l: 'ชื่อผู้ใช้', dis: !!u, req: 1, ph: 'a-z 0-9 _ . - (3–32 ตัว)' },
+    { k: 'role', l: 'สิทธิ์', opts: [['viewer', 'ผู้ดูข้อมูล (ดูอย่างเดียว)'], ['admin', 'ผู้ดูแลระบบ (แก้ไขได้)']] },
+    { k: 'password', l: u ? 'รหัสผ่านใหม่' : 'รหัสผ่าน', pw: 1, req: !u, ph: u ? 'เว้นว่างถ้าไม่เปลี่ยน' : 'อย่างน้อย 8 ตัวอักษร' }],
+    u || { role: 'viewer' },
+    fd => u ? api('PUT', 'users/' + encodeURIComponent(u.username), { role: fd.role, password: fd.password }) : api('POST', 'users', fd));
+}
+
+// Executive summary: headline figures with month-over-month change, auto-written talking points, rankings
+function renderExe() {
+  const um = unitMap(), inDist = u => !S.dist || u?.district === S.dist;
+  const rowsOf = (fy, mo) => rowsFor(fy, mo, t => inDist(um[t.unit_id]));
+  const sum = (rows, k) => rows.reduce((s, r) => s + (r[k] || 0), 0);
+  const prev = S.mo === 0 ? [S.fy - 1, 0] : S.mo > 1 ? [S.fy, S.mo - 1] : [S.fy - 1, 12];
+  const prevLabel = S.mo === 0 ? 'ปีงบ ' + (S.fy - 1) : mName(prev[1]);
+  const cur = rowsOf(S.fy, S.mo), old = rowsOf(...prev);
+  const active = S.units.filter(u => u.active === 'Y' && inDist(u));
+  const A = sum(cur, 'disbursed_A'), B = sum(cur, 'stock_B'), A0 = sum(old, 'disbursed_A'), B0 = sum(old, 'stock_B');
+  const m = A ? B / A : null, m0 = A0 ? B0 / A0 : null;
+  const rep = new Set(cur.map(r => r.unit_id)).size, rep0 = new Set(old.map(r => r.unit_id)).size;
+  const per = (a, b) => b ? (a - b) / b * 100 : null;
+  const delta = (v, unit = '%', goodUp = null) => {
+    if (v == null || !Number.isFinite(v)) return '<span class="hint">ไม่มีข้อมูลช่วงก่อนหน้าเทียบ</span>';
+    const arrow = v > 0.05 ? '▲' : v < -0.05 ? '▼' : '■', col = goodUp == null || Math.abs(v) < 0.05 ? 'var(--mut)' : (v > 0) === goodUp ? 'var(--ok)' : 'var(--bad)';
+    return `<span style="color:${col}">${arrow} ${fmt(Math.abs(v), unit === '%' ? 1 : 2)}${unit === '%' ? '%' : ' ' + unit} จาก${prevLabel}</span>`;
+  };
+  const items = cur.map(r => ({ r, u: um[r.unit_id], s: status(r.disbursed_A, r.stock_B), m: r.disbursed_A ? r.stock_B / r.disbursed_A : null }));
+  const nOk = items.filter(x => x.s === 'ok').length, nWarn = items.filter(x => x.s === 'warn').length, nBad = items.filter(x => x.s === 'bad').length;
+  const st = status(A, B);
+  $('#exe-title').textContent = `รายงานผู้บริหาร · ${mName(S.mo)} ปีงบ ${S.fy}${S.dist ? ' · อ.' + S.dist : ' · ทั้งจังหวัด'}`;
+  $('#exe-kpis').innerHTML = [
+    ['อัตราคงคลัง', m == null ? '–' : fmt(m, 2) + ' เดือน', delta(m == null || m0 == null ? null : m - m0, 'เดือน', null) + `<br>เกณฑ์ ${S.kpi.green_min}–${S.kpi.green_max} เดือน`, `color:var(--${st})`],
+    ['หน่วยตามเกณฑ์', items.length ? fmt(nOk / items.length * 100, 1) + '%' : '–', `${nOk} จาก ${items.length} หน่วยที่รายงาน`],
+    ['อัตราการรายงาน', active.length ? fmt(rep / active.length * 100, 1) + '%' : '–', `${rep}/${active.length} หน่วย · ` + delta(rep0 ? per(rep, rep0) : null, '%', true)],
+    ['มูลค่าคงคลัง (B)' + (S.mo === 0 ? ' เฉลี่ย/เดือน' : ''), fmt(B) + ' ฿', delta(B0 ? per(B, B0) : null, '%', null)],
+    ['มูลค่าเบิกจ่าย (A)' + (S.mo === 0 ? ' เฉลี่ย/เดือน' : ''), fmt(A) + ' ฿', delta(A0 ? per(A, A0) : null, '%', null)],
+  ].map(([l, v, s, style]) => `<div class="card kpi"><div class="l">${l}</div><div class="v" style="${style || ''}">${v}</div><div class="s">${s}</div></div>`).join('');
+
+  // district roll-up
+  const ds = [...new Set(S.units.filter(inDist).map(u => u.district))];
+  const dRows = ds.map(d => {
+    const its = items.filter(x => x.u?.district === d), act = active.filter(u => u.district === d).length;
+    const a = sum(its.map(x => x.r), 'disbursed_A'), b = sum(its.map(x => x.r), 'stock_B');
+    return { d, act, rep: its.length, ok: its.filter(x => x.s === 'ok').length, m: a ? b / a : null };
+  }).map(x => ({ ...x, pct: x.rep ? x.ok / x.rep * 100 : null })).sort((a, b) => (b.pct ?? -1) - (a.pct ?? -1));
+  $('#exe-dist').innerHTML = `<thead><tr><th>อำเภอ</th><th class="n">หน่วย</th><th class="n">รายงาน</th><th class="n">ตามเกณฑ์</th><th class="n">เดือนคงคลัง</th></tr></thead><tbody>${dRows.map(x =>
+    `<tr><td>${esc(x.d)}</td><td class="n">${x.act}</td><td class="n">${x.rep}</td><td class="n"><span class="badge b-${x.pct == null ? 'none' : x.pct >= 60 ? 'ok' : x.pct >= 30 ? 'warn' : 'bad'}">${x.pct == null ? '–' : fmt(x.pct, 0) + '%'}</span></td><td class="n">${fmt(x.m, 2)}</td></tr>`).join('')}</tbody>`;
+
+  // units furthest outside the green band
+  const mid = (S.kpi.green_min + S.kpi.green_max) / 2;
+  const worst = items.filter(x => x.m != null && x.s !== 'ok').sort((a, b) => Math.abs(b.m - mid) - Math.abs(a.m - mid)).slice(0, 10);
+  $('#exe-worst').innerHTML = `<thead><tr><th>หน่วย</th><th>อำเภอ</th><th class="n">เดือน</th><th>ลักษณะ</th></tr></thead><tbody>${worst.map(x =>
+    `<tr><td>${esc(x.u?.unit_name)}</td><td>${esc(x.u?.district)}</td><td class="n">${fmt(x.m, 2)}</td><td>${x.m > S.kpi.green_max ? 'คงคลังสูงเกิน' : 'คงคลังต่ำ'}</td></tr>`).join('') || '<tr><td colspan="4" class="hint">ไม่มีหน่วยที่อยู่นอกเกณฑ์</td></tr>'}</tbody>`;
+
+  // not reporting
+  const repIds = new Set(cur.map(r => r.unit_id)), nr = active.filter(u => !repIds.has(u.unit_id));
+  $('#exe-nr-n').textContent = `${nr.length} หน่วย`;
+  $('#exe-nr').innerHTML = `<tbody>${nr.map(u => `<tr><td>${esc(u.unit_name)}</td><td>${esc(u.district)}</td></tr>`).join('') || '<tr><td class="hint">รายงานครบทุกหน่วย</td></tr>'}</tbody>`;
+
+  // talking points
+  const bl = [];
+  if (m != null) bl.push(`อัตราคงคลังรวม <b>${fmt(m, 2)} เดือน</b> ${st === 'ok' ? 'อยู่ในเกณฑ์' : st === 'warn' ? 'อยู่ในระดับเฝ้าระวัง' : 'อยู่นอกเกณฑ์'} (เกณฑ์ ${S.kpi.green_min}–${S.kpi.green_max} เดือน)`);
+  if (items.length) bl.push(`จาก ${items.length} หน่วยที่รายงาน: ตามเกณฑ์ <b>${nOk}</b> · เฝ้าระวัง <b>${nWarn}</b> · ผิดเกณฑ์ <b>${nBad}</b>`);
+  if (active.length) bl.push(`รายงานแล้ว ${rep}/${active.length} หน่วย (${fmt(rep / active.length * 100, 1)}%)${nr.length ? ` · ยังไม่รายงาน <b>${nr.length}</b> หน่วย ควรมอบหมายผู้รับผิดชอบติดตาม` : ''}`);
+  const hi = items.filter(x => x.m != null && x.m > S.kpi.green_max).length, lo = items.filter(x => x.m != null && x.m < S.kpi.green_min).length;
+  if (hi || lo) bl.push(`คงคลังสูงกว่าเกณฑ์ <b>${hi}</b> หน่วย (เสี่ยงยาหมดอายุ/เงินจม) · ต่ำกว่าเกณฑ์ <b>${lo}</b> หน่วย (เสี่ยงขาดยา)`);
+  const top = dRows.filter(x => x.pct != null);
+  if (top.length > 1 && !S.dist) bl.push(`อำเภอที่อยู่ในเกณฑ์มากสุด: <b>${esc(top[0].d)}</b> (${fmt(top[0].pct, 0)}%) · น้อยสุด: <b>${esc(top[top.length - 1].d)}</b> (${fmt(top[top.length - 1].pct, 0)}%)`);
+  if (B0 && A0) bl.push(`มูลค่าคงคลัง${B >= B0 ? 'เพิ่มขึ้น' : 'ลดลง'} ${fmt(Math.abs(per(B, B0)), 1)}% และการเบิกจ่าย${A >= A0 ? 'เพิ่มขึ้น' : 'ลดลง'} ${fmt(Math.abs(per(A, A0)), 1)}% เทียบกับ${prevLabel}${S.mo === 0 ? ' (ค่าเฉลี่ยต่อเดือน)' : ''}`);
+  const hot = S.insights.filter(i => i.priority === 'สูง' && i.status !== 'เสร็จสิ้น').length;
+  if (hot) bl.push(`มี Key Insights ความสำคัญสูงที่ยังไม่เสร็จสิ้น <b>${hot}</b> เรื่อง`);
+  if (rep && rep < active.length * 0.5) bl.push(`<span style="color:var(--warn)">ข้อควรระวัง: รายงานไม่ถึงครึ่งของหน่วยทั้งหมด ตัวเลขรวมอาจยังไม่สะท้อนภาพจริง</span>`);
+  $('#exe-bullets').innerHTML = bl.length ? bl.map(b => `<li style="margin:4px 0">${b}</li>`).join('') : '<li class="hint">ยังไม่มีข้อมูลในเดือนที่เลือก</li>';
+}
+function renderKpi() {
+  drawTable('#ktbl', 'k', S.allKpi, [['fiscal_year', 'ปีงบ', 1], ['green_min', 'เขียวต่ำสุด', 1], ['green_max', 'เขียวสูงสุด', 1], ['warn_low', 'เฝ้าระวังต่ำ', 1], ['warn_high', 'เฝ้าระวังสูง', 1], ['note', 'หมายเหตุ']],
+    (r, k) => k === 'note' ? esc(r.note) : esc(r[k]),
+    r => `<button class="btn sm" data-a="edit-kpi" data-id="${r.fiscal_year}">แก้ไข</button> <button class="btn sm del" data-a="del-kpi" data-id="${r.fiscal_year}">ลบ</button>`);
+}
+
+function drawTable(sel, key, data, cols, cell, actions) {
+  const s = S.sort[key];
+  if (s) data = [...data].sort((a, b) => { const x = a[s.k] ?? -Infinity, y = b[s.k] ?? -Infinity; return (typeof x === 'string' ? x.localeCompare(y, 'th') : x - y) * s.d; });
+  $(sel).innerHTML = `<thead><tr>${cols.map(([k, l, n]) => `<th data-k="${k}" class="${n ? 'n' : ''}">${l}${s?.k === k ? (s.d > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}${actions ? '<th></th>' : ''}</tr></thead><tbody>${data.map(r => `<tr>${cols.map(([k, , n]) => `<td class="${n ? 'n' : ''}">${cell(r, k)}</td>`).join('')}${actions ? `<td class="n">${actions(r)}</td>` : ''}</tr>`).join('')}</tbody>`;
+  $(sel).querySelectorAll('th[data-k]').forEach(th => th.onclick = () => { const k = th.dataset.k; S.sort[key] = { k, d: s?.k === k ? -s.d : 1 }; render(); });
+}
+
+function renderTxn() {
+  const um = unitMap(), q = $('#q-txn').value.trim().toLowerCase();
+  const rows = S.txns.filter(t => t.fiscal_year === S.fy).map(t => ({ ...t, unit_name: um[t.unit_id]?.unit_name || '', district: um[t.unit_id]?.district || '', mn: mName(t.month_no) }))
+    .filter(t => (!S.dist || t.district === S.dist) && (!q || (t.unit_name + t.unit_id).toLowerCase().includes(q)));
+  $('#txn-count').textContent = `${rows.length} รายการ (ปีงบ ${S.fy})`;
+  drawTable('#ttbl', 't', rows, [['month_no', 'เดือน'], ['unit_name', 'หน่วยบริการ'], ['district', 'อำเภอ'], ['disbursed_A', 'เบิกจ่าย A', 1], ['stock_B', 'คงคลัง B', 1], ['reserve_C', 'สำรอง C', 1], ['source', 'แหล่งที่มา'], ['updated_at', 'อัปเดต']],
+    (r, k) => k === 'month_no' ? esc(r.mn) : ['disbursed_A', 'stock_B', 'reserve_C'].includes(k) ? fmt(r[k], 2) : esc(r[k]),
+    r => `<button class="btn sm" data-a="edit" data-id="${esc(r.txn_id)}">แก้ไข</button> <button class="btn sm del" data-a="del-txn" data-id="${esc(r.txn_id)}">ลบ</button>`);
+}
+function renderUnits() {
+  const q = $('#q-unit').value.trim().toLowerCase();
+  const rows = S.units.filter(u => (!S.dist || u.district === S.dist) && (!q || (u.unit_name + u.unit_id).toLowerCase().includes(q)));
+  $('#unit-count').textContent = `${rows.length} หน่วย`;
+  drawTable('#utbl', 'u', rows, [['unit_id', 'รหัส'], ['unit_name', 'ชื่อหน่วย'], ['district', 'อำเภอ'], ['affiliation', 'สังกัด'], ['active', 'ใช้งาน'], ['note', 'หมายเหตุ']],
+    (r, k) => k === 'active' ? (r.active === 'Y' ? '✔' : '✖') : esc(r[k]),
+    r => `<button class="btn sm" data-a="edit-unit" data-id="${esc(r.unit_id)}">แก้ไข</button> <button class="btn sm del" data-a="del-unit" data-id="${esc(r.unit_id)}">ลบ</button>`);
+}
+function renderIns() {
+  drawTable('#itbl', 'i', S.insights, [['priority', 'ความสำคัญ'], ['title', 'หัวข้อ'], ['insight', 'ข้อค้นพบ'], ['action', 'ข้อเสนอแนะ'], ['status', 'สถานะ'], ['source', 'แหล่งที่มา']],
+    (r, k) => k === 'priority' ? `<span class="badge b-${r.priority === 'สูง' ? 'bad' : r.priority === 'กลาง' ? 'warn' : 'none'}">${esc(r.priority)}</span>` : `<div style="white-space:normal;max-width:${k === 'title' ? 240 : 340}px">${esc(r[k])}</div>`,
+    r => `<button class="btn sm" data-a="edit-ins" data-id="${esc(r.id)}">แก้ไข</button> <button class="btn sm del" data-a="del-ins" data-id="${esc(r.id)}">ลบ</button>`);
+}
+
+// ---- modal form ----
+function form(title, fields, values, onSave) {
+  $('#dlg-t').textContent = title;
+  $('#dlg-f').innerHTML = fields.map(f => {
+    if (f.hint) return `<div class="hint" style="grid-column:1/-1">${f.hint}</div>`;
+    const v = values[f.k] ?? '', dis = f.dis ? 'disabled' : '';
+    const opt = o => { const [ov, ol] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(ov)}" ${String(ov) === String(v) ? 'selected' : ''}>${esc(ol)}</option>`; };
+    const inp = f.opts ? `<select name="${f.k}" ${dis}>${f.opts.map(o => o.group ? `<optgroup label="${esc(o.group)}">${o.items.map(opt).join('')}</optgroup>` : opt(o)).join('')}</select>`
+      : f.area ? `<textarea name="${f.k}" rows="${f.rows || 3}" ${dis} ${f.req ? 'required' : ''}>${esc(v)}</textarea>` : `<input name="${f.k}" type="${f.num ? 'number' : f.pw ? 'password' : 'text'}" ${f.pw ? 'autocomplete="new-password"' : ''} placeholder="${esc(f.ph || '')}" ${f.num ? 'step="0.01" min="0"' : ''} value="${esc(v)}" ${dis} ${f.req ? 'required' : ''}>`;
+    return `<label>${f.l}</label>${inp}`;
+  }).join('');
+  $('#frm').onsubmit = e => { e.preventDefault(); const fd = {}; $('#dlg-f').querySelectorAll('[name]').forEach(el => fd[el.name] = el.value); guard(async () => { await onSave(fd); $('#dlg').close(); await load(); toast('บันทึกแล้ว'); }); };
+  $('#dlg').showModal();
+}
+// active units grouped by district (districts and units both sorted in Thai order)
+const unitOpts = () => {
+  const by = {};
+  S.units.filter(u => u.active === 'Y').forEach(u => (by[u.district] ||= []).push(u));
+  return Object.keys(by).sort((a, b) => a.localeCompare(b, 'th')).map(d => ({ group: 'อำเภอ' + d, items: by[d].sort((a, b) => a.unit_name.localeCompare(b.unit_name, 'th')).map(u => [u.unit_id, u.unit_name]) }));
+};
+// fiscal years: every year in the data, plus the current Thai fiscal year (starts in October) and the next one
+function fyOpts(selected) {
+  const d = new Date(), cur = d.getFullYear() + 543 + (d.getMonth() >= 9 ? 1 : 0);
+  const ys = S.txns.map(t => t.fiscal_year);
+  if (selected) ys.push(+selected);
+  const lo = Math.min(...ys, cur), hi = Math.max(...ys, cur) + 1, out = [];
+  for (let y = hi; y >= lo; y--) out.push([y, `${y}${y === cur ? ' (ปีปัจจุบัน)' : ''}`]);
+  return out;
+}
+const moOpts = MONTHS.map((m, i) => [i + 1, m]);
+
+function txnForm(txn, unitId) {
+  const isNew = !txn, v = txn || { unit_id: unitId || S.units[0]?.unit_id, fiscal_year: S.fy, month_no: S.mo || 1 };
+  form(isNew ? 'เพิ่มข้อมูลรายเดือน' : `แก้ไข ${txn.txn_id}`, [
+    { k: 'unit_id', l: 'หน่วยบริการ', opts: unitOpts(), dis: !isNew }, { k: 'fiscal_year', l: 'ปีงบประมาณ', opts: fyOpts(v.fiscal_year), dis: !isNew }, { k: 'month_no', l: 'เดือน', opts: moOpts, dis: !isNew },
+    { k: 'disbursed_A', l: 'เบิกจ่าย (A)', num: 1 }, { k: 'stock_B', l: 'คงคลัง (B)', num: 1 }, { k: 'reserve_C', l: 'สำรอง (C)', num: 1 }, { k: 'note', l: 'หมายเหตุ', area: 1 }], v,
+    fd => isNew ? api('POST', 'transactions', fd) : api('PUT', 'transactions/' + encodeURIComponent(txn.txn_id), fd));
+}
+function unitForm(u) {
+  const ds = [...new Set(S.units.map(x => x.district))];
+  form(u ? `แก้ไข ${u.unit_id}` : 'เพิ่มหน่วยบริการ', [
+    { k: 'unit_id', l: 'รหัส', dis: !!u, req: 1 }, { k: 'unit_name', l: 'ชื่อหน่วย', req: 1 }, { k: 'district', l: 'อำเภอ', opts: ds },
+    { k: 'affiliation', l: 'สังกัด' }, { k: 'active', l: 'ใช้งาน', opts: [['Y', 'ใช้งาน'], ['N', 'ปิดใช้งาน']] }, { k: 'note', l: 'หมายเหตุ', area: 1 }],
+    u || { active: 'Y', unit_id: 'U' + String(S.units.length + 1).padStart(3, '0') },
+    fd => u ? api('PUT', 'units/' + encodeURIComponent(u.unit_id), fd) : api('POST', 'units', fd));
+}
+function insForm(i) {
+  form(i ? 'แก้ไข Insight' : 'เพิ่ม Insight', [
+    { k: 'title', l: 'หัวข้อ', req: 1 }, { k: 'insight', l: 'ข้อค้นพบ', area: 1 }, { k: 'action', l: 'ข้อเสนอแนะ', area: 1 },
+    { k: 'priority', l: 'ความสำคัญ', opts: ['สูง', 'กลาง', 'ต่ำ'] }, { k: 'status', l: 'สถานะ', opts: ['ใหม่', 'กำลังดำเนินการ', 'เสร็จสิ้น'] }, { k: 'source', l: 'แหล่งที่มา' }],
+    i || { priority: 'กลาง', status: 'ใหม่', source: `Dashboard ปีงบ ${S.fy} เดือน${mName(S.mo)}` },
+    fd => i ? api('PUT', 'insights/' + i.id, fd) : api('POST', 'insights', fd));
+}
+function kpiForm(k) {
+  form(k ? `แก้ไขเป้าหมายปีงบ ${k.fiscal_year}` : 'เพิ่มเป้าหมาย KPI', [
+    { k: 'fiscal_year', l: 'ปีงบประมาณ', num: 1, dis: !!k, req: 1 }, { k: 'green_min', l: 'เขียวต่ำสุด', num: 1, req: 1 }, { k: 'green_max', l: 'เขียวสูงสุด', num: 1, req: 1 },
+    { k: 'warn_low', l: 'เฝ้าระวังต่ำ', num: 1, req: 1 }, { k: 'warn_high', l: 'เฝ้าระวังสูง', num: 1, req: 1 }, { k: 'note', l: 'หมายเหตุ', area: 1 }],
+    k || { fiscal_year: S.fy, green_min: 2, green_max: 3, warn_low: 1, warn_high: 4 },
+    async fd => {
+      const g = +fd.green_min, G = +fd.green_max, w = +fd.warn_low, W = +fd.warn_high;
+      if (!(w <= g && g <= G && G <= W)) throw new Error('ต้องเรียงลำดับ: เฝ้าระวังต่ำ ≤ เขียวต่ำสุด ≤ เขียวสูงสุด ≤ เฝ้าระวังสูง');
+      return k ? api('PUT', 'kpi_targets/' + k.fiscal_year, fd) : api('POST', 'kpi_targets', fd);
+    });
+}
+const del = (path, label) => confirm(`ลบ ${label} ?\nการลบไม่สามารถย้อนกลับได้`) && guard(async () => { await api('DELETE', path); await load(); toast('ลบแล้ว'); });
+
+// ---- events ----
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-a]'); if (!b) return;
+  const id = b.dataset.id, a = b.dataset.a;
+  if (a === 'edit') txnForm(S.txns.find(t => t.txn_id === id));
+  else if (a === 'new') txnForm(null, id);
+  else if (a === 'del-txn') del('transactions/' + encodeURIComponent(id), id);
+  else if (a === 'edit-unit') unitForm(S.units.find(u => u.unit_id === id));
+  else if (a === 'del-unit') del('units/' + encodeURIComponent(id), id);
+  else if (a === 'edit-ins') insForm(S.insights.find(i => i.id === id));
+  else if (a === 'del-ins') del('insights/' + id, 'Insight นี้');
+  else if (a === 'edit-kpi') kpiForm(S.allKpi.find(k => String(k.fiscal_year) === id));
+  else if (a === 'del-kpi') del('kpi_targets/' + id, 'เป้าหมายปีงบ ' + id);
+  else if (a === 'edit-mp') mpForm(S.prompts.find(p => p.id === id));
+  else if (a === 'del-mp') del('master_prompts/' + id, 'เทมเพลตนี้');
+  else if (a === 'edit-usr') usrForm(S.users.find(u => u.username === id));
+  else if (a === 'del-usr') del('users/' + encodeURIComponent(id), 'ผู้ใช้ ' + id);
+});
+$('#add-mp').onclick = () => mpForm(null); $('#add-usr').onclick = () => usrForm(null);
+$('#mp-sel').onchange = renderMp;
+$('#mp-copy').onclick = async () => {
+  const text = $('#mp-out').value; if (!text) return toast('ยังไม่มีเทมเพลตให้คัดลอก', true);
+  try { await navigator.clipboard.writeText(text); }
+  catch (e) { $('#mp-out').select(); document.execCommand('copy'); }
+  toast('คัดลอก Prompt แล้ว');
+};
+$('#mp-dl').onclick = () => {
+  const text = $('#mp-out').value; if (!text) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+  a.download = `master-prompt-${S.fy}-${S.mo || 'all'}.txt`; a.click(); URL.revokeObjectURL(a.href);
+};
+$('#add-kpi').onclick = () => kpiForm(null);
+$('#add-txn').onclick = () => txnForm(null); $('#add-unit').onclick = () => unitForm(null); $('#add-ins').onclick = () => insForm(null);
+$('#dlg-x').onclick = () => $('#dlg').close();
+$('#fy').onchange = e => { S.fy = +e.target.value; if (S.mo !== 0) S.mo = null; renderFilters(); render(); };
+$('#mo').onchange = e => { S.mo = +e.target.value; render(); };
+$('#dist').onchange = e => { S.dist = e.target.value; render(); };
+$('#q-txn').oninput = renderTxn; $('#q-unit').oninput = renderUnits;
+$('#nav').onclick = e => {
+  const btn = e.target.closest('button[data-t]'); if (!btn) return;
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b === btn));
+  document.querySelectorAll('main > section').forEach(s => s.hidden = s.id !== 't-' + btn.dataset.t);
+  $('#page-title').textContent = btn.querySelector('.lg').textContent;
+  scrollTo({ top: 0 });
+  Object.values(charts).forEach(c => c.resize());
+};
+// theme: follows the OS by default, a manual choice is remembered per browser
+try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+$('#theme').onclick = () => {
+  const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme:dark)').matches;
+  const next = dark ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem('theme', next); } catch (e) {}
+  if (S.me) render();
+};
+fetch('/api/me').then(r => r.ok ? r.json() : null).then(me => me ? (setUser(me), guard(load)) : showLogin());
+</script>
+</body>
+</html>

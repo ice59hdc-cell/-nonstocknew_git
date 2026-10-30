@@ -1,0 +1,7 @@
+data.db-*
+srv.log
+srv3000.log
+data.db
+
+output/
+.aetox-attachments/

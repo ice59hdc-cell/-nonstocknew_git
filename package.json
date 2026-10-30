@@ -1,0 +1,8 @@
+{
+  "name": "nonstock-dashboard",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "import": "python -I import_xlsx.py \"../nonstcoknara2027 .xlsx\" data.db"
+  }
+}
