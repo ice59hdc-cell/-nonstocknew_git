@@ -207,8 +207,9 @@ h1,h2,h3{letter-spacing:0}
     <div class="card"><h3>สถานะหน่วยบริการ <span class="hint">เทียบเกณฑ์ KPI</span></h3><div class="cv"><canvas id="c-stat"></canvas></div></div>
     <div class="card"><h3>อัตราคงคลัง (เดือน) รายอำเภอ <span class="hint">แตะแท่งเพื่อกรองอำเภอ</span></h3><div class="cv tall"><canvas id="c-dist"></canvas></div></div>
   </div>
+  <div class="card" style="margin-bottom:16px"><h3>จำนวนหน่วยบริการที่บันทึกข้อมูลแล้ว รายเดือน <span class="hint" id="rep-hint"></span></h3><div class="cv"><canvas id="c-rep"></canvas></div></div>
   <div class="card">
-    <div class="bar"><h3 style="margin:0">รายหน่วยบริการ <span class="hint" id="tblhint"></span></h3><span class="sp"></span>
+    <div class="bar"><h3 style="margin:0">รายหน่วยบริการ<span class="hint" id="tblhint"></span></h3><span class="sp"></span>
       <div class="legend"><span><i style="background:var(--ok)"></i>ตามเกณฑ์</span><span><i style="background:var(--warn)"></i>เฝ้าระวัง</span><span><i style="background:var(--bad)"></i>สูงกว่าเกณฑ์</span><span><i style="background:var(--none)"></i>ไม่มีข้อมูล</span></div></div>
     <div class="scroll"><table id="dtbl"></table></div>
   </div>
@@ -386,6 +387,22 @@ function render() {
     { type: 'bar', label: 'เบิกจ่าย (A)', data: mA, backgroundColor: cssv('--acc') + 'cc', borderRadius: 8, maxBarThickness: 38 },
     { type: 'line', label: 'คงคลัง (B)', data: mB, borderColor: cssv('--warn'), backgroundColor: cssv('--warn'), borderWidth: 2.5, pointRadius: 3, pointHoverRadius: 6, tension: .35 } ] },
     options: { responsive: true, interaction: { mode: 'index', intersect: false }, scales, plugins: { legend, tooltip: { ...tip, callbacks: { label: c => `${c.dataset.label}: ${fmt(c.parsed.y)} ฿` } } }, onClick: (e, els) => { if (els.length) { S.mo = tm[els[0].index]; $('#mo').value = S.mo; render(); } } } });
+
+  // units with a record per month (follows district filter, whole fiscal year; months after the latest record stay empty)
+  const lastMo = Math.max(0, ...tm);
+  const nRep = SHORT.map((_, i) => i + 1 > lastMo ? null : new Set(fyRows.filter(r => r.month_no === i + 1).map(r => r.unit_id)).size);
+  const nAct = activeUnits.length;
+  $('#rep-hint').textContent = `ปีงบ ${S.fy}${S.dist ? ' · ' + S.dist : ''} · จาก ${fmt(nAct)} หน่วยที่เปิดใช้งาน · แตะแท่งเพื่อเลือกเดือน`;
+  const fg = cssv('--fg');
+  const barValues = { id: 'barValues', afterDatasetsDraw(c) {
+    const g = c.ctx; g.save(); g.fillStyle = fg; g.font = '600 12px ' + Chart.defaults.font.family; g.textAlign = 'center'; g.textBaseline = 'bottom';
+    c.getDatasetMeta(0).data.forEach((bar, i) => { if (nRep[i] != null) g.fillText(fmt(nRep[i]), bar.x, bar.y - 4); });
+    g.restore();
+  } };
+  chart('c-rep', { type: 'bar', plugins: [barValues], data: { labels: SHORT, datasets: [{ label: 'หน่วยที่บันทึกข้อมูล', data: nRep, backgroundColor: SHORT.map((_, i) => !S.mo || i + 1 === S.mo ? cssv('--acc') : cssv('--acc') + '80'), borderRadius: 4, borderSkipped: 'bottom', maxBarThickness: 38 }] },
+    options: { responsive: true, layout: { padding: { top: 20 } }, scales: { x: scales.x, y: { ...scales.y, beginAtZero: true, max: Math.max(nAct, ...nRep.filter(n => n != null)) || 1, ticks: { ...scales.y.ticks, precision: 0 } } },
+      plugins: { legend: { display: false }, tooltip: { ...tip, callbacks: { title: c => mName(c[0].dataIndex + 1), label: c => `บันทึกแล้ว ${fmt(c.parsed.y)} จาก ${fmt(nAct)} หน่วย${nAct ? ` (${fmt(c.parsed.y / nAct * 100, 1)}%)` : ''}` } } },
+      onClick: (e, els) => { if (els.length && nRep[els[0].index]) { S.mo = els[0].index + 1; $('#mo').value = S.mo; setTimeout(render); } } } });
 
   // districts for selected month (ignores district filter so you can pick another)
   const ds = [...new Set(S.units.map(u => u.district))].sort((a, b) => a.localeCompare(b, 'th'));
