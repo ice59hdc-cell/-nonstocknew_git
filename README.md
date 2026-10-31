@@ -33,7 +33,7 @@ The existing client contract is preserved:
 - `GET /api/export/<table>.csv`
 - `GET/POST /api/<table>` and `GET/PUT/DELETE /api/<table>/<id>` for `units`, `transactions`, `insights`, `lessons`, `master_prompts`, and `kpi_targets`
 
-All routes except login require a persistent Postgres-backed session. The cookie is `HttpOnly`, `Secure`, and `SameSite=Strict`; the database stores only a SHA-256 digest of each random session token. Passwords use a unique random salt and Node’s scrypt KDF. Viewer accounts have read-only access.
+All routes except login require a persistent Postgres-backed session. The cookie is `HttpOnly`, `Secure`, and `SameSite=Strict`; the database stores only a SHA-256 digest of each random session token. Passwords use a unique random salt and Node’s scrypt KDF. Viewer accounts have read-only access. Unit accounts (`role = 'unit'`, created under จัดการผู้ใช้) are tied to one service unit: they can read their own unit and its transactions, create/update/delete only those transactions, and read KPI targets; every other table is refused on the server.
 
 To add or replace a user after migration:
 

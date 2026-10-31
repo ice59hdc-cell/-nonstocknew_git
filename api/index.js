@@ -11,6 +11,8 @@ const TABLES = Object.freeze({
   master_prompts: { pk: 'id', cols: ['id', 'title', 'category', 'purpose', 'prompt', 'tags', 'status', 'created_at', 'updated_at'], required: ['title', 'prompt'], prefix: 'MP', stamps: true },
   kpi_targets: { pk: 'fiscal_year', cols: ['fiscal_year', 'green_min', 'green_max', 'warn_low', 'warn_high', 'note'], required: ['fiscal_year'] }
 });
+// What a 'unit' account may touch; every table not listed here is refused. own = limited to the account's unit.
+const UNIT_ACCESS = Object.freeze({ transactions: { write: true, own: true }, units: { own: true }, kpi_targets: {} });
 
 class HttpError extends Error {
   constructor(status, message) { super(message); this.status = status; }
@@ -83,39 +85,59 @@ function csv(rows) {
 }
 async function session(req) {
   const sid = cookies(req).sid; if (!sid || !/^[a-f0-9]{64}$/.test(sid)) return null;
-  const rows = await query('SELECT u.username, u.role FROM sessions s JOIN users u ON u.username = s.username WHERE s.token_hash = $1 AND s.expires_at > now()', [tokenHash(sid)]);
+  const rows = await query('SELECT u.username, u.role, u.unit_id FROM sessions s JOIN users u ON u.username = s.username WHERE s.token_hash = $1 AND s.expires_at > now()', [tokenHash(sid)]);
   return rows[0] || null;
 }
-async function getOne(name, id) {
+async function getOne(name, id, own = null) {
   const table = TABLES[name];
-  return (await query(`SELECT * FROM ${name} WHERE ${table.pk} = $1`, [id]))[0] || null;
+  return (own == null ? await query(`SELECT * FROM ${name} WHERE ${table.pk} = $1`, [id])
+    : await query(`SELECT * FROM ${name} WHERE ${table.pk} = $1 AND unit_id = $2`, [id, own]))[0] || null;
+}
+function listRows(name, own = null) {
+  return own == null ? query(`SELECT * FROM ${name}`) : query(`SELECT * FROM ${name} WHERE unit_id = $1`, [own]);
+}
+// Decides access to a table and returns the unit_id the request is limited to (null = not limited). Unknown roles are refused.
+function authorize(req, sess, name) {
+  if (sess.role === 'admin') return null;
+  if (sess.role === 'viewer') { if (req.method === 'GET') return null; throw new HttpError(403, 'บัญชีนี้ดูข้อมูลได้อย่างเดียว'); }
+  const access = Object.hasOwn(UNIT_ACCESS, name) ? UNIT_ACCESS[name] : null;
+  if (sess.role === 'unit' && sess.unit_id && access && (req.method === 'GET' || access.write)) return access.own ? sess.unit_id : null;
+  throw new HttpError(403, 'บัญชีหน่วยบริการเข้าถึงได้เฉพาะข้อมูลของหน่วยตนเอง');
 }
 async function requireAdmin(sess) { if (!sess || sess.role !== 'admin') throw new HttpError(403, 'เฉพาะผู้ดูแลระบบ'); }
 async function users(req, parts, body, sess) {
   await requireAdmin(sess);
   const username = parts[1] || null;
-  const publicUser = async (name) => (await query('SELECT username, role FROM users WHERE username = $1', [name]))[0] || null;
-  const validRole = (role) => { if (!['admin', 'viewer'].includes(role)) throw new HttpError(400, 'role ต้องเป็น admin หรือ viewer'); };
+  const publicUser = async (name) => (await query('SELECT username, role, unit_id FROM users WHERE username = $1', [name]))[0] || null;
+  const validRole = (role) => { if (!['admin', 'viewer', 'unit'].includes(role)) throw new HttpError(400, 'role ต้องเป็น admin, viewer หรือ unit'); };
+  const unitFor = async (role, unitId) => {
+    if (role !== 'unit') return null;
+    if (typeof unitId !== 'string' || !unitId) throw new HttpError(400, 'ต้องเลือกหน่วยบริการ');
+    if (!await getOne('units', unitId)) throw new HttpError(400, 'ไม่พบหน่วยบริการที่เลือก');
+    return unitId;
+  };
   const validPassword = (password) => { if (typeof password !== 'string' || password.length < 8) throw new HttpError(400, 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร'); };
-  if (req.method === 'GET' && !username) return query('SELECT username, role FROM users ORDER BY username');
+  if (req.method === 'GET' && !username) return query('SELECT username, role, unit_id FROM users ORDER BY username');
   if (req.method === 'POST' && !username) {
     const name = typeof body.username === 'string' ? body.username.trim() : '';
     if (!/^[A-Za-z0-9_.-]{3,32}$/.test(name)) throw new HttpError(400, 'ชื่อผู้ใช้ใช้ได้เฉพาะ a-z 0-9 _ . - ความยาว 3–32 ตัว');
     validRole(body.role); validPassword(body.password); if (await publicUser(name)) throw new HttpError(409, `มีผู้ใช้ ${name} อยู่แล้ว`);
+    const unitId = await unitFor(body.role, body.unit_id);
     const salt = crypto.randomBytes(16).toString('hex');
-    await query('INSERT INTO users(username, pass_hash, salt, role) VALUES($1, $2, $3, $4)', [name, passwordHash(body.password, salt), salt, body.role]);
+    await query('INSERT INTO users(username, pass_hash, salt, role, unit_id) VALUES($1, $2, $3, $4, $5)', [name, passwordHash(body.password, salt), salt, body.role, unitId]);
     return publicUser(name);
   }
   if (req.method === 'PUT' && username) {
     const current = await publicUser(username); if (!current) throw new HttpError(404, 'ไม่พบผู้ใช้');
     const role = body.role ?? current.role; validRole(role);
+    const unitId = await unitFor(role, body.unit_id ?? current.unit_id);
     const adminCount = Number((await query("SELECT COUNT(*)::int AS count FROM users WHERE role = 'admin'"))[0].count);
     if (current.role === 'admin' && role !== 'admin' && adminCount <= 1) throw new HttpError(400, 'ต้องมีผู้ดูแลระบบอย่างน้อย 1 คน');
     if (body.password !== undefined) {
       validPassword(body.password); const salt = crypto.randomBytes(16).toString('hex');
-      await query('UPDATE users SET pass_hash = $1, salt = $2, role = $3 WHERE username = $4', [passwordHash(body.password, salt), salt, role, username]);
-    } else await query('UPDATE users SET role = $1 WHERE username = $2', [role, username]);
-    if (body.password !== undefined || role !== current.role) await query('DELETE FROM sessions WHERE username = $1', [username]);
+      await query('UPDATE users SET pass_hash = $1, salt = $2, role = $3, unit_id = $4 WHERE username = $5', [passwordHash(body.password, salt), salt, role, unitId, username]);
+    } else await query('UPDATE users SET role = $1, unit_id = $2 WHERE username = $3', [role, unitId, username]);
+    if (body.password !== undefined || role !== current.role || unitId !== current.unit_id) await query('DELETE FROM sessions WHERE username = $1', [username]);
     return publicUser(username);
   }
   if (req.method === 'DELETE' && username) {
@@ -127,12 +149,13 @@ async function users(req, parts, body, sess) {
   }
   throw new HttpError(405, 'method ไม่รองรับ');
 }
-async function tableApi(req, name, id, body) {
+async function tableApi(req, name, id, body, own) {
   const table = TABLES[name];
-  if (req.method === 'GET' && id == null) return query(`SELECT * FROM ${name}`);
-  if (req.method === 'GET') { const row = await getOne(name, id); if (!row) throw new HttpError(404, 'ไม่พบข้อมูล'); return row; }
+  if (req.method === 'GET' && id == null) return listRows(name, own);
+  if (req.method === 'GET') { const row = await getOne(name, id, own); if (!row) throw new HttpError(404, 'ไม่พบข้อมูล'); return row; }
   if (req.method === 'POST' && id == null) {
     const row = pick(table, body); if (table.prefix && !row[table.pk]) row[table.pk] = table.prefix + crypto.randomBytes(6).toString('hex');
+    if (own != null) { if (row.unit_id != null && row.unit_id !== own) throw new HttpError(403, 'บันทึกได้เฉพาะข้อมูลของหน่วยตนเอง'); row.unit_id = own; }
     prepare(name, row, true); if (row[table.pk] == null || row[table.pk] === '') throw new HttpError(400, `ต้องระบุ ${table.pk}`);
     if (await getOne(name, row[table.pk])) throw new HttpError(409, `มี ${row[table.pk]} อยู่แล้ว`);
     const columns = Object.keys(row); const placeholders = columns.map((_, index) => `$${index + 1}`).join(', ');
@@ -141,16 +164,20 @@ async function tableApi(req, name, id, body) {
     return getOne(name, row[table.pk]);
   }
   if (req.method === 'PUT' && id != null) {
-    const current = await getOne(name, id); if (!current) throw new HttpError(404, 'ไม่พบข้อมูล');
+    const current = await getOne(name, id, own); if (!current) throw new HttpError(404, 'ไม่พบข้อมูล');
     const row = { ...current, ...pick(table, body) }; row[table.pk] = current[table.pk];
-    if (name === 'transactions') { row.unit_id = current.unit_id; row.fiscal_year = current.fiscal_year; row.month_no = current.month_no; }
+    if (name === 'transactions') { row.unit_id = current.unit_id; row.fiscal_year = current.fiscal_year; row.month_no = current.month_no; row.recorded_at = current.recorded_at; }
     prepare(name, row, false); const columns = table.cols.filter((column) => column !== table.pk);
-    try { await query(`UPDATE ${name} SET ${columns.map((column, index) => `${identifier(column)} = $${index + 1}`).join(', ')} WHERE ${table.pk} = $${columns.length + 1}`, [...columns.map((column) => row[column] ?? null), id]); }
+    try { await query(`UPDATE ${name} SET ${columns.map((column, index) => `${identifier(column)} = $${index + 1}`).join(', ')} WHERE ${table.pk} = $${columns.length + 1}${own == null ? '' : ` AND unit_id = $${columns.length + 2}`}`, [...columns.map((column) => row[column] ?? null), id, ...(own == null ? [] : [own])]); }
     catch (error) { if (error.code === '23503') throw new HttpError(409, 'ข้อมูลถูกอ้างอิงอยู่ หรืออ้างอิงรหัสที่ไม่มีอยู่'); throw error; }
     return getOne(name, id);
   }
   if (req.method === 'DELETE' && id != null) {
-    const result = await query(`DELETE FROM ${name} WHERE ${table.pk} = $1 RETURNING ${table.pk}`, [id]);
+    let result;
+    try {
+      result = own == null ? await query(`DELETE FROM ${name} WHERE ${table.pk} = $1 RETURNING ${table.pk}`, [id])
+        : await query(`DELETE FROM ${name} WHERE ${table.pk} = $1 AND unit_id = $2 RETURNING ${table.pk}`, [id, own]);
+    } catch (error) { if (error.code === '23503') throw new HttpError(409, 'ข้อมูลถูกอ้างอิงอยู่ ลบไม่ได้'); throw error; }
     if (!result.length) throw new HttpError(404, 'ไม่พบข้อมูล'); return { deleted: id };
   }
   throw new HttpError(405, 'method ไม่รองรับ');
@@ -158,12 +185,12 @@ async function tableApi(req, name, id, body) {
 async function login(body, res) {
   const username = typeof body.username === 'string' ? body.username : '';
   const password = typeof body.password === 'string' ? body.password : '';
-  const user = (await query('SELECT username, pass_hash, salt, role FROM users WHERE username = $1', [username]))[0];
+  const user = (await query('SELECT username, pass_hash, salt, role, unit_id FROM users WHERE username = $1', [username]))[0];
   if (!user || !safeEqual(passwordHash(password, user.salt), user.pass_hash)) throw new HttpError(401, 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
   const token = crypto.randomBytes(32).toString('hex');
   await query('DELETE FROM sessions WHERE expires_at <= now()');
   await query('INSERT INTO sessions(token_hash, username, expires_at) VALUES($1, $2, now() + ($3 * interval \'1 second\'))', [tokenHash(token), user.username, SESSION_SECONDS]);
-  setCookie(res, token, SESSION_SECONDS); return { username: user.username, role: user.role };
+  setCookie(res, token, SESSION_SECONDS); return { username: user.username, role: user.role, unit_id: user.unit_id };
 }
 module.exports = async function handler(req, res) {
   try {
@@ -179,14 +206,15 @@ module.exports = async function handler(req, res) {
     if (route === 'me') return sess ? send(res, 200, sess) : send(res, 401, { error: 'ยังไม่ได้เข้าสู่ระบบ' });
     if (!sess) throw new HttpError(401, 'ยังไม่ได้เข้าสู่ระบบ');
     if (parts[0] === 'users') return send(res, 200, await users(req, parts, body, sess));
-    if (req.method !== 'GET' && sess.role !== 'admin') throw new HttpError(403, 'บัญชีนี้ดูข้อมูลได้อย่างเดียว');
     if (parts[0] === 'export' && parts.length === 2 && parts[1].endsWith('.csv')) {
-      const name = parts[1].slice(0, -4); if (!TABLES[name]) throw new HttpError(404, 'ไม่พบตาราง');
+      const name = parts[1].slice(0, -4); if (!Object.hasOwn(TABLES, name)) throw new HttpError(404, 'ไม่พบตาราง');
+      if (req.method !== 'GET') throw new HttpError(405, 'method ไม่รองรับ');
+      const own = authorize(req, sess, name);
       res.setHeader('Content-Disposition', `attachment; filename="${name}.csv"`);
-      return send(res, 200, csv(await query(`SELECT * FROM ${name}`)), 'text/csv; charset=utf-8');
+      return send(res, 200, csv(await listRows(name, own)), 'text/csv; charset=utf-8');
     }
-    const name = parts[0]; if (!TABLES[name] || parts.length > 2) throw new HttpError(404, 'ไม่พบตาราง');
-    return send(res, 200, await tableApi(req, name, parts[1] || null, body));
+    const name = parts[0]; if (!Object.hasOwn(TABLES, name) || parts.length > 2) throw new HttpError(404, 'ไม่พบตาราง');
+    return send(res, 200, await tableApi(req, name, parts[1] || null, body, authorize(req, sess, name)));
   } catch (error) {
     if (error instanceof HttpError) return send(res, error.status, { error: error.message });
     console.error('API failure', error instanceof Error ? error.message : 'unknown error');

@@ -130,6 +130,7 @@ dialog::backdrop{background:rgba(8,12,28,.55);backdrop-filter:blur(3px)}dialog h
 @media(min-width:901px) and (max-height:760px){.lg-copy h1{font-size:30px}.lg-copy p:last-child{display:none}.lg-scene{margin:10px 0}}
 .legend{display:flex;gap:14px;font-size:12px;color:var(--mut);flex-wrap:wrap}.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
 .ro .adm,.ro .wr,.ro [data-a^=edit],.ro [data-a^=del],.ro [data-a=new]{display:none}
+.un .adm,.un .wr:not(#add-txn),.un [data-a^=edit-],.un [data-a^=del-]:not([data-a=del-txn]),.un #nav [data-t=exe],.un #nav [data-t=unit],.un #nav [data-t=ins],.un #nav [data-t=kpi],.un #nav [data-t=mp],.un .filters label:has(#dist){display:none}
 section{animation:in .25s ease}@keyframes in{from{transform:translateY(6px)}to{transform:none}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
@@ -285,7 +286,7 @@ h1,h2,h3{letter-spacing:0}
 </section>
 
 <section id="t-usr" hidden><div class="card">
-  <div class="bar"><span class="hint">ผู้ดูแลระบบ = เพิ่ม/แก้ไข/ลบข้อมูลได้ · ผู้ดูข้อมูล = ดูและส่งออกได้อย่างเดียว</span><span class="sp"></span><button class="btn pri" id="add-usr">+ เพิ่มผู้ใช้</button></div>
+  <div class="bar"><span class="hint">ผู้ดูแลระบบ = เพิ่ม/แก้ไข/ลบข้อมูลได้ · ผู้ดูข้อมูล = ดูและส่งออกได้อย่างเดียว · หน่วยบริการ = ดูและบันทึกได้เฉพาะข้อมูลของหน่วยตนเอง</span><span class="sp"></span><button class="btn pri" id="add-usr">+ เพิ่มผู้ใช้</button></div>
   <div class="scroll"><table id="usbl"></table></div></div></section>
 </main>
 </div>
@@ -326,10 +327,11 @@ async function api(method, path, body) {
   return j;
 }
 function showLogin() { $('#login').hidden = false; $('#lf').elements.password.value = ''; }
+const ROLE_LABEL = { admin: 'แก้ไขได้', viewer: 'ดูอย่างเดียว', unit: 'หน่วยบริการ' };
 function setUser(me) {
   S.me = me; $('#login').hidden = true;
-  $('#who').textContent = `${me.username} (${me.role === 'admin' ? 'แก้ไขได้' : 'ดูอย่างเดียว'})`;
-  $('#logout').hidden = false; document.body.classList.toggle('ro', me.role !== 'admin');
+  $('#who').textContent = `${me.username} (${ROLE_LABEL[me.role] || me.role})`;
+  $('#logout').hidden = false; document.body.classList.toggle('ro', me.role === 'viewer'); document.body.classList.toggle('un', me.role === 'unit');
 }
 $('#lf').onsubmit = async e => {
   e.preventDefault(); $('#lerr').textContent = '';
@@ -370,11 +372,12 @@ function toast(msg, err) { const t = $('#toast'); t.textContent = msg; t.classNa
 async function guard(fn) { try { await fn(); } catch (e) { toast(e.message, true); } }
 
 async function load() {
-  const admin = S.me?.role === 'admin';
-  const [u, t, i, k, p, us] = await Promise.all([api('GET', 'units'), api('GET', 'transactions'), api('GET', 'insights'), api('GET', 'kpi_targets'), api('GET', 'master_prompts'), admin ? api('GET', 'users') : []]);
+  const admin = S.me?.role === 'admin', unit = S.me?.role === 'unit';
+  const [u, t, i, k, p, us] = await Promise.all([api('GET', 'units'), api('GET', 'transactions'), unit ? [] : api('GET', 'insights'), api('GET', 'kpi_targets'), unit ? [] : api('GET', 'master_prompts'), admin ? api('GET', 'users') : []]);
   S.units = u; S.txns = t; S.insights = i; S.prompts = p; S.users = us;
   S.kpi = k.find(x => x.fiscal_year === S.fy) || k.find(x => x.fiscal_year === 0) || { green_min: 2, green_max: 3, warn_low: 1, warn_high: 4 };
   S.allKpi = k;
+  if (unit) $('#who').textContent = `${S.me.username} (${u[0]?.unit_name || 'หน่วยบริการ'})`;
   renderFilters(); render();
 }
 
@@ -552,17 +555,22 @@ function mpForm(p) {
 
 // ---- user management (admin) ----
 function renderUsr() {
-  drawTable('#usbl', 'us', S.users || [], [['username', 'ชื่อผู้ใช้'], ['role', 'สิทธิ์']],
-    (r, k) => k === 'role' ? `<span class="badge b-${r.role === 'admin' ? 'ok' : 'none'}">${r.role === 'admin' ? 'ผู้ดูแลระบบ' : 'ผู้ดูข้อมูล'}</span>` : esc(r.username) + (r.username === S.me?.username ? ' <span class="hint">(คุณ)</span>' : ''),
+  drawTable('#usbl', 'us', S.users || [], [['username', 'ชื่อผู้ใช้'], ['role', 'สิทธิ์'], ['unit_id', 'หน่วยบริการ']],
+    (r, k) => k === 'role' ? `<span class="badge b-${r.role === 'admin' ? 'ok' : r.role === 'unit' ? 'warn' : 'none'}">${{ admin: 'ผู้ดูแลระบบ', unit: 'หน่วยบริการ' }[r.role] || 'ผู้ดูข้อมูล'}</span>` : k === 'unit_id' ? esc(unitMap()[r.unit_id]?.unit_name || r.unit_id || '–') : esc(r.username) + (r.username === S.me?.username ? ' <span class="hint">(คุณ)</span>' : ''),
     r => `<button class="btn sm" data-a="edit-usr" data-id="${esc(r.username)}">แก้ไข / เปลี่ยนรหัสผ่าน</button> ${r.username === S.me?.username ? '' : `<button class="btn sm del" data-a="del-usr" data-id="${esc(r.username)}">ลบ</button>`}`);
 }
 function usrForm(u) {
   form(u ? `แก้ไขผู้ใช้ ${u.username}` : 'เพิ่มผู้ใช้', [
     { k: 'username', l: 'ชื่อผู้ใช้', dis: !!u, req: 1, ph: 'a-z 0-9 _ . - (3–32 ตัว)' },
-    { k: 'role', l: 'สิทธิ์', opts: [['viewer', 'ผู้ดูข้อมูล (ดูอย่างเดียว)'], ['admin', 'ผู้ดูแลระบบ (แก้ไขได้)']] },
+    { k: 'role', l: 'สิทธิ์', opts: [['viewer', 'ผู้ดูข้อมูล (ดูอย่างเดียว)'], ['unit', 'หน่วยบริการ (บันทึกเฉพาะหน่วยตนเอง)'], ['admin', 'ผู้ดูแลระบบ (แก้ไขได้)']] },
+    { k: 'unit_id', l: 'หน่วยบริการ', opts: [['', '— เลือกหน่วยบริการ —'], ...unitOpts(true)] },
     { k: 'password', l: u ? 'รหัสผ่านใหม่' : 'รหัสผ่าน', pw: 1, req: !u, ph: u ? 'เว้นว่างถ้าไม่เปลี่ยน' : 'อย่างน้อย 8 ตัวอักษร' }],
     u || { role: 'viewer' },
-    fd => u ? api('PUT', 'users/' + encodeURIComponent(u.username), { role: fd.role, password: fd.password }) : api('POST', 'users', fd));
+    fd => u ? api('PUT', 'users/' + encodeURIComponent(u.username), { role: fd.role, unit_id: fd.unit_id || undefined, password: fd.password || undefined }) : api('POST', 'users', fd));
+  // the unit field only applies to the unit role
+  const role = $('#dlg-f [name=role]'), unit = $('#dlg-f [name=unit_id]');
+  const sync = () => { const on = role.value === 'unit'; unit.style.display = unit.previousElementSibling.style.display = on ? '' : 'none'; unit.required = on; };
+  role.onchange = sync; sync();
 }
 
 // Executive summary: headline figures with month-over-month change, auto-written talking points, rankings
@@ -682,9 +690,9 @@ function form(title, fields, values, onSave) {
   $('#dlg').showModal();
 }
 // active units grouped by district (districts and units both sorted in Thai order)
-const unitOpts = () => {
+const unitOpts = (all) => {
   const by = {};
-  S.units.filter(u => u.active === 'Y').forEach(u => (by[u.district] ||= []).push(u));
+  S.units.filter(u => all || u.active === 'Y').forEach(u => (by[u.district] ||= []).push(u));
   return Object.keys(by).sort((a, b) => a.localeCompare(b, 'th')).map(d => ({ group: 'อำเภอ' + d, items: by[d].sort((a, b) => a.unit_name.localeCompare(b.unit_name, 'th')).map(u => [u.unit_id, u.unit_name]) }));
 };
 // fiscal years: every year in the data, plus the current Thai fiscal year (starts in October) and the next one

@@ -87,3 +87,11 @@ CREATE TABLE IF NOT EXISTS sessions (
   created_at timestamp with time zone NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS ix_sessions_expiry ON sessions(expires_at);
+
+-- Service-unit accounts: role 'unit' is tied to one unit. Safe to re-run on an existing database.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS unit_id text REFERENCES units(unit_id);
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin', 'viewer', 'unit'));
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_unit_role_check;
+ALTER TABLE users ADD CONSTRAINT users_unit_role_check CHECK (role <> 'unit' OR unit_id IS NOT NULL);
+CREATE INDEX IF NOT EXISTS ix_users_unit ON users(unit_id);
