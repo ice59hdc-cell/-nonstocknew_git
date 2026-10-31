@@ -1,6 +1,6 @@
 # Dashboard มูลค่ายาคงคลัง
 
-Production runtime is **Vercel Serverless Functions + Neon Postgres**. The static dashboard remains in `public/`; its API is `api/[...path].js`. `public/index.html` is unchanged.
+Production runtime is **Vercel Serverless Functions + Neon Postgres**. The static dashboard remains in `public/`; its API is `api/index.js`. `public/index.html` is unchanged.
 
 ## Deploy to Vercel / Neon
 

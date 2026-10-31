@@ -6,7 +6,7 @@
     "start": "npx vercel dev",
     "migrate:neon": "node scripts/migrate-sqlite-to-neon.mjs",
     "test": "node scripts/test-api-security.cjs",
-    "check": "node --check api/[...path].js && node --check scripts/migrate-sqlite-to-neon.mjs && node --check adduser.js && node --check scripts/test-api-security.cjs"
+    "check": "node --check api/index.js && node --check scripts/migrate-sqlite-to-neon.mjs && node --check adduser.js && node --check scripts/test-api-security.cjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2"

@@ -13,7 +13,7 @@ const originalLoad = Module._load;
 Module._load = (request, parent, isMain) => request === '@neondatabase/serverless'
   ? { neon: fakeNeon } : originalLoad(request, parent, isMain);
 process.env.DATABASE_URL = 'postgresql://test:test@example.invalid/test';
-const handler = require('../api/[...path].js');
+const handler = require('../api/index.js');
 Module._load = originalLoad;
 
 function request(url) {
@@ -37,5 +37,9 @@ function request(url) {
   assert.equal(valid.status, 200);
   assert.equal(valid.body[0].unit_id, 'U1');
   assert.equal(queries.at(-1).text, 'SELECT * FROM units');
-  console.log('SQL route attack rejected; allowlisted units request accepted');
+  queries.length = 0;
+  const nested = await request('/api/units/U1');
+  assert.equal(nested.status, 404);
+  assert.deepEqual(queries.at(-1).params, ['U1'], 'nested /api/<table>/<id> must reach the table handler');
+  console.log('SQL route attack rejected; allowlisted units and nested routes accepted');
 })().catch((error) => { console.error(error); process.exitCode = 1; });
