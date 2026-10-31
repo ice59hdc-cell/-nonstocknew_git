@@ -188,6 +188,18 @@ async function loginUnits() {
 async function login(body, res) {
   const unitId = typeof body.unit_id === 'string' ? body.unit_id : '';
   const password = typeof body.password === 'string' ? body.password : '';
+  if (unitId === '__admin__') {
+    const expected = process.env.ADMIN_LOGIN_PASSWORD;
+    if (!expected) throw new Error('ADMIN_LOGIN_PASSWORD is not configured');
+    if (!safeEqual(crypto.createHash('sha256').update(password).digest('hex'), crypto.createHash('sha256').update(expected).digest('hex'))) throw new HttpError(401, 'รหัสผ่านผู้ดูแลระบบไม่ถูกต้อง');
+    const admin = (await query("SELECT username FROM users WHERE role = 'admin' ORDER BY username LIMIT 1"))[0];
+    if (!admin) throw new HttpError(401, 'ยังไม่มีบัญชีผู้ดูแลระบบ');
+    const token = crypto.randomBytes(32).toString('hex');
+    await query('DELETE FROM sessions WHERE expires_at <= now()');
+    await query('INSERT INTO sessions(token_hash, username, expires_at) VALUES($1, $2, now() + ($3 * interval \'1 second\'))', [tokenHash(token), admin.username, SESSION_SECONDS]);
+    setCookie(res, token, SESSION_SECONDS);
+    return { username: admin.username, role: 'admin', unit_id: null };
+  }
   const expected = process.env.UNIT_LOGIN_PASSWORD;
   if (!expected) throw new Error('UNIT_LOGIN_PASSWORD is not configured');
   if (!unitId || !safeEqual(crypto.createHash('sha256').update(password).digest('hex'), crypto.createHash('sha256').update(expected).digest('hex'))) throw new HttpError(401, 'หน่วยบริการหรือรหัสผ่านไม่ถูกต้อง');

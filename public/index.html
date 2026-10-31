@@ -331,7 +331,7 @@ async function showLogin() {
   $('#lf').elements.password.value = '';
   try {
     const units = await api('GET', 'login-units');
-    $('#lf').elements.unit_id.innerHTML = '<option value="">— เลือกหน่วยบริการ —</option>' + units.map(u => `<option value="${esc(u.unit_id)}">${esc(u.unit_name)} · ${esc(u.district)}</option>`).join('');
+    $('#lf').elements.unit_id.innerHTML = '<option value="">— เลือกหน่วยบริการ —</option><option value="__admin__">ผู้ดูแลระบบ (admin)</option>' + units.map(u => `<option value="${esc(u.unit_id)}">${esc(u.unit_name)} · ${esc(u.district)}</option>`).join('');
   } catch (error) {
     $('#lerr').textContent = error.message;
   }
