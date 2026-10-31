@@ -209,7 +209,7 @@ h1,h2,h3{letter-spacing:0}
   </div>
   <div class="card">
     <div class="bar"><h3 style="margin:0">รายหน่วยบริการ <span class="hint" id="tblhint"></span></h3><span class="sp"></span>
-      <div class="legend"><span><i style="background:var(--ok)"></i>ตามเกณฑ์</span><span><i style="background:var(--warn)"></i>เฝ้าระวัง</span><span><i style="background:var(--bad)"></i>ผิดเกณฑ์</span><span><i style="background:var(--none)"></i>ไม่มีข้อมูล</span></div></div>
+      <div class="legend"><span><i style="background:var(--ok)"></i>ตามเกณฑ์</span><span><i style="background:var(--warn)"></i>เฝ้าระวัง</span><span><i style="background:var(--bad)"></i>สูงกว่าเกณฑ์</span><span><i style="background:var(--none)"></i>ไม่มีข้อมูล</span></div></div>
     <div class="scroll"><table id="dtbl"></table></div>
   </div>
 </section>
@@ -227,7 +227,7 @@ h1,h2,h3{letter-spacing:0}
   <div class="scroll"><table id="itbl"></table></div></div></section>
 
 <section id="t-kpi" hidden><div class="card">
-  <div class="bar"><span class="hint">ช่วงอัตราคงคลัง (เดือน): เขียว = ตามเกณฑ์, เหลือง = เฝ้าระวัง, นอกช่วง = ผิดเกณฑ์ · ปีงบ 0 = ค่าเริ่มต้น</span><span class="sp"></span><a class="btn" href="/api/export/kpi_targets.csv">⬇ CSV</a><button class="btn pri wr" id="add-kpi">+ เพิ่มเป้าหมาย</button></div>
+  <div class="bar"><span class="hint">ช่วงอัตราคงคลัง (เดือน): เขียว = ตามเกณฑ์, เหลือง = เฝ้าระวัง, เกินช่วง = สูงกว่าเกณฑ์ · ปีงบ 0 = ค่าเริ่มต้น</span><span class="sp"></span><a class="btn" href="/api/export/kpi_targets.csv">⬇ CSV</a><button class="btn pri wr" id="add-kpi">+ เพิ่มเป้าหมาย</button></div>
   <div class="scroll"><table id="ktbl"></table></div></div></section>
 
 <section id="t-mp" hidden>
@@ -309,7 +309,7 @@ function status(a, b) {
   if (m >= k.warn_low && m <= k.warn_high) return 'warn';
   return 'bad';
 }
-const SL = { ok: 'ตามเกณฑ์', warn: 'เฝ้าระวัง', bad: 'ผิดเกณฑ์', none: 'ไม่มีข้อมูล' };
+const SL = { ok: 'ตามเกณฑ์', warn: 'เฝ้าระวัง', bad: 'สูงกว่าเกณฑ์', none: 'ไม่มีข้อมูล' };
 const badge = s => `<span class="badge b-${s}">${SL[s]}</span>`;
 const mName = m => m === 0 ? 'ทั้งปีงบ' : MONTHS[m - 1] || m;
 // rows of one fiscal year; mo = 0 means "all months": each unit's months are averaged so A and B stay monthly figures
@@ -422,7 +422,7 @@ function mpValues() {
   const dist = lines('#exe-dist', true), worst = lines('#exe-worst', true), nr = lines('#exe-nr', true);
   return {
     'ขอบเขต': $('#exe-title').textContent + (S.mo === 0 ? ' (ตัวเลข A และ B เป็นค่าเฉลี่ยต่อเดือน)' : ''),
-    'เกณฑ์ KPI': `อัตราคงคลัง = มูลค่าคงคลัง (B) ÷ มูลค่าเบิกจ่าย (A) หน่วยเป็นเดือน · ตามเกณฑ์ ${k.green_min}–${k.green_max} เดือน · เฝ้าระวัง ${k.warn_low}–${k.warn_high} เดือน · นอกช่วงนี้ผิดเกณฑ์`,
+    'เกณฑ์ KPI': `อัตราคงคลัง = มูลค่าคงคลัง (B) ÷ มูลค่าเบิกจ่าย (A) หน่วยเป็นเดือน · ตามเกณฑ์ ${k.green_min}–${k.green_max} เดือน · เฝ้าระวัง ${k.warn_low}–${k.warn_high} เดือน · เกินช่วงนี้ = สูงกว่าเกณฑ์`,
     'ตัวชี้วัดหลัก': list([...document.querySelectorAll('#exe-kpis .kpi')].map(c => `${c.querySelector('.l').textContent}: ${c.querySelector('.v').textContent.trim()} (${c.querySelector('.s').innerHTML.replace(/<br\s*\/?>/gi, ' · ').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()})`)),
     'ประเด็นสำคัญ': list([...document.querySelectorAll('#exe-bullets li')].map(l => l.textContent.trim())),
     'อันดับอำเภอ': dist.length ? `${header('#exe-dist')}\n${list(dist)}` : '- (ไม่มีข้อมูล)',
@@ -526,7 +526,7 @@ function renderExe() {
   // talking points
   const bl = [];
   if (m != null) bl.push(`อัตราคงคลังรวม <b>${fmt(m, 2)} เดือน</b> ${st === 'ok' ? 'อยู่ในเกณฑ์' : st === 'warn' ? 'อยู่ในระดับเฝ้าระวัง' : 'อยู่นอกเกณฑ์'} (เกณฑ์ ${S.kpi.green_min}–${S.kpi.green_max} เดือน)`);
-  if (items.length) bl.push(`จาก ${items.length} หน่วยที่รายงาน: ตามเกณฑ์ <b>${nOk}</b> · เฝ้าระวัง <b>${nWarn}</b> · ผิดเกณฑ์ <b>${nBad}</b>`);
+  if (items.length) bl.push(`จาก ${items.length} หน่วยที่รายงาน: ตามเกณฑ์ <b>${nOk}</b> · เฝ้าระวัง <b>${nWarn}</b> · สูงกว่าเกณฑ์ <b>${nBad}</b>`);
   if (active.length) bl.push(`รายงานแล้ว ${rep}/${active.length} หน่วย (${fmt(rep / active.length * 100, 1)}%)${nr.length ? ` · ยังไม่รายงาน <b>${nr.length}</b> หน่วย ควรมอบหมายผู้รับผิดชอบติดตาม` : ''}`);
   const hi = items.filter(x => x.m != null && x.m > S.kpi.green_max).length, lo = items.filter(x => x.m != null && x.m < S.kpi.green_min).length;
   if (hi || lo) bl.push(`คงคลังสูงกว่าเกณฑ์ <b>${hi}</b> หน่วย (เสี่ยงยาหมดอายุ/เงินจม) · ต่ำกว่าเกณฑ์ <b>${lo}</b> หน่วย (เสี่ยงขาดยา)`);
