@@ -301,7 +301,7 @@ h1,h2,h3{letter-spacing:0}
   </div>
   <div class="lg-pane"><form id="lf">
     <p class="lg-eye">ยินดีต้อนรับ</p><h2>เข้าสู่ระบบคลังยา</h2><p class="lg-sub">ใช้บัญชีที่ผู้ดูแลระบบจัดเตรียมให้</p>
-    <label for="lg-u">ชื่อผู้ใช้</label><input id="lg-u" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+    <label for="lg-u">หน่วยบริการ</label><select id="lg-u" name="unit_id" required><option value="">กำลังโหลดรายชื่อหน่วยบริการ…</option></select>
     <label for="lg-p">รหัสผ่าน</label><input id="lg-p" name="password" type="password" autocomplete="current-password" required>
     <div id="lerr" role="alert"></div>
     <button type="submit">เข้าสู่ระบบ<span aria-hidden="true">→</span></button>
@@ -326,7 +326,16 @@ async function api(method, path, body) {
   if (!r.ok) throw new Error(j.error || r.statusText);
   return j;
 }
-function showLogin() { $('#login').hidden = false; $('#lf').elements.password.value = ''; }
+async function showLogin() {
+  $('#login').hidden = false;
+  $('#lf').elements.password.value = '';
+  try {
+    const units = await api('GET', 'login-units');
+    $('#lf').elements.unit_id.innerHTML = '<option value="">— เลือกหน่วยบริการ —</option>' + units.map(u => `<option value="${esc(u.unit_id)}">${esc(u.unit_name)} · ${esc(u.district)}</option>`).join('');
+  } catch (error) {
+    $('#lerr').textContent = error.message;
+  }
+}
 const ROLE_LABEL = { admin: 'แก้ไขได้', viewer: 'ดูอย่างเดียว', unit: 'หน่วยบริการ' };
 function setUser(me) {
   S.me = me; $('#login').hidden = true;
@@ -336,7 +345,7 @@ function setUser(me) {
 $('#lf').onsubmit = async e => {
   e.preventDefault(); $('#lerr').textContent = '';
   const btn = e.target.querySelector('button'); btn.disabled = true;
-  try { setUser(await api('POST', 'login', { username: e.target.elements.username.value, password: e.target.elements.password.value })); await load(); }
+  try { setUser(await api('POST', 'login', { unit_id: e.target.elements.unit_id.value, password: e.target.elements.password.value })); await load(); }
   catch (err) { $('#lerr').textContent = err.message; }
   finally { btn.disabled = false; }
 };

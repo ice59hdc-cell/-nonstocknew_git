@@ -12,6 +12,7 @@ const Module = require('node:module');
   Module._load = (request, parent, isMain) => request === '@neondatabase/serverless'
     ? { neon: () => ({ query: async (text, params = []) => (await pg.query(text, params)).rows }) } : originalLoad(request, parent, isMain);
   process.env.DATABASE_URL = 'postgresql://test:test@example.invalid/test';
+  process.env.UNIT_LOGIN_PASSWORD = '9600';
   const handler = require('../api/index.js');
   Module._load = originalLoad;
 
@@ -38,13 +39,19 @@ const Module = require('node:module');
       handler({ method, url, body: body ?? {}, headers: { cookie } }, res);
     });
   }
-  async function login(username) {
-    const r = await call('POST', '/api/login', { username, password: 'password1' });
-    assert.equal(r.status, 200, username);
+  async function login(unitId) {
+    const r = await call('POST', '/api/login', { unit_id: unitId, password: '9600' });
+    assert.equal(r.status, 200, unitId);
     return r.headers['Set-Cookie'].split(';')[0];
   }
+  async function sessionFor(username) {
+    const token = crypto.randomBytes(32).toString('hex');
+    const hash = crypto.createHash('sha256').update(token).digest('hex');
+    await pg.query("INSERT INTO sessions(token_hash, username, expires_at) VALUES($1, $2, now() + interval '1 hour')", [hash, username]);
+    return `sid=${token}`;
+  }
   const check = async (label, status, ...args) => { const r = await call(...args); assert.equal(r.status, status, `${label}: ${r.text}`); return r; };
-  const ua = await login('ua'), admin = await login('admin'), view = await login('view');
+  const ua = await login('A'), admin = await sessionFor('admin'), view = await sessionFor('view');
 
   // accepted: a unit account has full CRUD on its own unit's records
   const list = await check('own list', 200, 'GET', '/api/transactions', null, ua);
@@ -92,7 +99,7 @@ const Module = require('node:module');
   assert.match((await check('object unit', 400, 'POST', '/api/users', { ...user, unit_id: { x: 1 } }, admin)).json.error, /เลือกหน่วยบริการ/);
   assert.equal((await check('create', 200, 'POST', '/api/users', { ...user, unit_id: 'B' }, admin)).json.unit_id, 'B');
   await assert.rejects(pg.query("UPDATE users SET unit_id = NULL WHERE username = 'unitb'"), 'a unit account cannot lose its unit');
-  const ub = await login('unitb');
+  const ub = await sessionFor('unitb');
   assert.deepEqual((await check('ub list', 200, 'GET', '/api/transactions', null, ub)).json.map((t) => t.unit_id), ['B']);
   await check('reassign', 200, 'PUT', '/api/users/unitb', { unit_id: 'A' }, admin);
   await check('reassign ends sessions', 401, 'GET', '/api/transactions', null, ub);

@@ -182,21 +182,34 @@ async function tableApi(req, name, id, body, own) {
   }
   throw new HttpError(405, 'method ไม่รองรับ');
 }
+async function loginUnits() {
+  return query("SELECT unit_id, unit_name, district FROM units WHERE active = 'Y' ORDER BY district, unit_name");
+}
 async function login(body, res) {
-  const username = typeof body.username === 'string' ? body.username : '';
+  const unitId = typeof body.unit_id === 'string' ? body.unit_id : '';
   const password = typeof body.password === 'string' ? body.password : '';
-  const user = (await query('SELECT username, pass_hash, salt, role, unit_id FROM users WHERE username = $1', [username]))[0];
-  if (!user || !safeEqual(passwordHash(password, user.salt), user.pass_hash)) throw new HttpError(401, 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+  const expected = process.env.UNIT_LOGIN_PASSWORD;
+  if (!expected) throw new Error('UNIT_LOGIN_PASSWORD is not configured');
+  if (!unitId || !safeEqual(crypto.createHash('sha256').update(password).digest('hex'), crypto.createHash('sha256').update(expected).digest('hex'))) throw new HttpError(401, 'หน่วยบริการหรือรหัสผ่านไม่ถูกต้อง');
+  const unit = (await query("SELECT unit_id FROM units WHERE unit_id = $1 AND active = 'Y'", [unitId]))[0];
+  if (!unit) throw new HttpError(401, 'หน่วยบริการหรือรหัสผ่านไม่ถูกต้อง');
+  const username = `unit-${unitId}`;
+  const existing = (await query('SELECT username FROM users WHERE username = $1', [username]))[0];
+  if (!existing) {
+    const salt = crypto.randomBytes(16).toString('hex');
+    await query("INSERT INTO users(username, pass_hash, salt, role, unit_id) VALUES($1, $2, $3, 'unit', $4)", [username, passwordHash(expected, salt), salt, unitId]);
+  }
   const token = crypto.randomBytes(32).toString('hex');
   await query('DELETE FROM sessions WHERE expires_at <= now()');
-  await query('INSERT INTO sessions(token_hash, username, expires_at) VALUES($1, $2, now() + ($3 * interval \'1 second\'))', [tokenHash(token), user.username, SESSION_SECONDS]);
-  setCookie(res, token, SESSION_SECONDS); return { username: user.username, role: user.role, unit_id: user.unit_id };
+  await query('INSERT INTO sessions(token_hash, username, expires_at) VALUES($1, $2, now() + ($3 * interval \'1 second\'))', [tokenHash(token), username, SESSION_SECONDS]);
+  setCookie(res, token, SESSION_SECONDS); return { username, role: 'unit', unit_id: unitId };
 }
 module.exports = async function handler(req, res) {
   try {
     const url = new URL(req.url, 'https://localhost');
     const parts = url.pathname.split('/').filter(Boolean).slice(1).map(decodeURIComponent);
     const route = parts.join('/'); const body = parseBody(req);
+    if (route === 'login-units' && req.method === 'GET') return send(res, 200, await loginUnits());
     if (route === 'login' && req.method === 'POST') return send(res, 200, await login(body, res));
     if (route === 'logout' && req.method === 'POST') {
       const sid = cookies(req).sid; if (sid && /^[a-f0-9]{64}$/.test(sid)) await query('DELETE FROM sessions WHERE token_hash = $1', [tokenHash(sid)]);
