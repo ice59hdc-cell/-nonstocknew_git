@@ -1,19 +1,44 @@
 # Dashboard มูลค่ายาคงคลัง
 
-Node 22+ (ใช้ `node:sqlite` ในตัว ไม่ต้อง npm install) · ข้อมูลอยู่ใน `data.db` (SQLite)
+Production runtime is **Vercel Serverless Functions + Neon Postgres**. The static dashboard remains in `public/`; its API is `api/[...path].js`. `public/index.html` is unchanged.
 
-    node server.js        # เปิด http://localhost:3000
-    python -I import_xlsx.py "../nonstcoknara2027 .xlsx" data.db   # นำเข้า Excel ใหม่ (ล้างข้อมูลเดิม)
+## Deploy to Vercel / Neon
 
-API: `GET/POST /api/<table>`, `GET/PUT/DELETE /api/<table>/<id>` — table: units, transactions, insights, lessons, kpi_targets
+1. Create a Neon Postgres database and copy its pooled connection string.
+2. In Vercel project settings, add `DATABASE_URL` as an encrypted environment variable for Production (and Preview if required). Never commit it or put it in a source file.
+3. Install dependencies: `npm install`.
+4. Migrate the existing local SQLite data (run once from a trusted machine):
 
-## ล็อกอิน / สิทธิ์
-- เริ่มเซิร์ฟเวอร์ครั้งแรกจะสร้าง `admin` พร้อมรหัสผ่านสุ่ม แสดงในหน้าจอที่รัน (หรือกำหนดเองด้วย env `ADMIN_PASSWORD`)
-- เพิ่ม/เปลี่ยนผู้ใช้: `node adduser.js <user> <password> [admin|viewer]` — viewer ดูได้อย่างเดียว
-- ส่งออก CSV (เปิดใน Excel ได้): `/api/export/<table>.csv`
+   ```sh
+   DATABASE_URL='postgresql://…' npm run migrate:neon -- ./data.db
+   ```
 
-## จัดการผู้ใช้ และ Master Prompt
-- เมนู "จัดการผู้ใช้" (เฉพาะ admin): เพิ่ม/เปลี่ยนสิทธิ์/ตั้งรหัสผ่านใหม่/ลบ — ป้องกันการลบหรือลดสิทธิ์ admin คนสุดท้าย และลบบัญชีตัวเองไม่ได้
-- เมนู "Master Prompt": สร้าง Prompt สรุปผู้บริหารจากข้อมูลบนหน้าสรุปผู้บริหารตามตัวกรอง แก้เทมเพลตได้ ตัวแปร: `{{ขอบเขต}} {{เกณฑ์ KPI}} {{ตัวชี้วัดหลัก}} {{ประเด็นสำคัญ}} {{อันดับอำเภอ}} {{หน่วยที่ต้องติดตาม}} {{หน่วยที่ยังไม่รายงาน}} {{Key Insights}}`
+   The migration applies `db/schema.sql`, upserts all dashboard tables and users, and deliberately does **not** copy browser sessions. It is safe to re-run after fixing a failed transfer. If the SQLite database has no users, supply `ADMIN_PASSWORD` (at least 8 characters) to create `admin`.
+5. Deploy with Vercel. For local Vercel emulation, set `DATABASE_URL` in `.env.local` (gitignored) and run `npm run dev`.
 
-# -nonstocknew_git
+Do not run the migration against an unknown database target. Take a restorable Neon backup before a production data migration.
+
+## Schema and migration
+
+- `db/schema.sql` is the PostgreSQL schema to apply to a clean Neon database.
+- `scripts/migrate-sqlite-to-neon.mjs` reads only the selected SQLite file and uses `DATABASE_URL` exclusively for Neon.
+- `npm run check` performs JavaScript syntax checks.
+
+## API and access control
+
+The existing client contract is preserved:
+
+- `POST /api/login`, `POST /api/logout`, and `GET /api/me`
+- Admin-only `/api/users` management
+- `GET /api/export/<table>.csv`
+- `GET/POST /api/<table>` and `GET/PUT/DELETE /api/<table>/<id>` for `units`, `transactions`, `insights`, `lessons`, `master_prompts`, and `kpi_targets`
+
+All routes except login require a persistent Postgres-backed session. The cookie is `HttpOnly`, `Secure`, and `SameSite=Strict`; the database stores only a SHA-256 digest of each random session token. Passwords use a unique random salt and Node’s scrypt KDF. Viewer accounts have read-only access.
+
+To add or replace a user after migration:
+
+```sh
+DATABASE_URL='postgresql://…' node adduser.js <user> <password> [admin|viewer]
+```
+
+The API binds every data value as a PostgreSQL parameter. Table and column identifiers are defined in server-side allowlists only. CSV exports use UTF-8 BOM for Excel-compatible Thai text.

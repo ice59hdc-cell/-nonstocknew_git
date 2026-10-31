@@ -1,14 +1,19 @@
-// Usage: node adduser.js <username> <password> [admin|viewer]   (creates or replaces the user)
+// Usage: DATABASE_URL=... node adduser.js <username> <password> [admin|viewer]
 const crypto = require('node:crypto');
-const path = require('node:path');
-const { DatabaseSync } = require('node:sqlite');
+const { neon } = require('@neondatabase/serverless');
 const [, , username, password, role = 'viewer'] = process.argv;
-if (!username || !password || !['admin', 'viewer'].includes(role)) {
-  console.error('usage: node adduser.js <username> <password> [admin|viewer]');
+
+if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL must be set');
+if (!/^[A-Za-z0-9_.-]{3,32}$/.test(username || '') || typeof password !== 'string' || password.length < 8 || !['admin', 'viewer'].includes(role)) {
+  console.error('usage: DATABASE_URL=... node adduser.js <username> <password (8+ chars)> [admin|viewer]');
   process.exit(1);
 }
-const db = new DatabaseSync(path.join(__dirname, 'data.db'));
-db.exec(`CREATE TABLE IF NOT EXISTS users(username TEXT PRIMARY KEY, pass_hash TEXT NOT NULL, salt TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'viewer')`);
-const salt = crypto.randomBytes(16).toString('hex');
-db.prepare('INSERT OR REPLACE INTO users VALUES(?,?,?,?)').run(username, crypto.scryptSync(password, salt, 64).toString('hex'), salt, role);
-console.log(`saved ${username} (${role})`);
+
+(async () => {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+  const sql = neon(process.env.DATABASE_URL);
+  await sql.query('INSERT INTO users(username, pass_hash, salt, role) VALUES($1, $2, $3, $4) ON CONFLICT (username) DO UPDATE SET pass_hash = EXCLUDED.pass_hash, salt = EXCLUDED.salt, role = EXCLUDED.role', [username, hash, salt, role]);
+  await sql.query('DELETE FROM sessions WHERE username = $1', [username]);
+  console.log(`saved ${username} (${role})`);
+})().catch((error) => { console.error(error.message); process.exitCode = 1; });

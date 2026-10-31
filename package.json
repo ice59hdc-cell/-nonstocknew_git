@@ -2,7 +2,16 @@
   "name": "nonstock-dashboard",
   "private": true,
   "scripts": {
-    "start": "node server.js",
-    "import": "python -I import_xlsx.py \"../nonstcoknara2027 .xlsx\" data.db"
+    "dev": "npx vercel dev",
+    "start": "npx vercel dev",
+    "migrate:neon": "node scripts/migrate-sqlite-to-neon.mjs",
+    "test": "node scripts/test-api-security.cjs",
+    "check": "node --check api/[...path].js && node --check scripts/migrate-sqlite-to-neon.mjs && node --check adduser.js && node --check scripts/test-api-security.cjs"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.2"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }
