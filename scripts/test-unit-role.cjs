@@ -90,8 +90,13 @@ const Module = require('node:module');
   assert.match(exported.text, /2569-01-A/); assert.doesNotMatch(exported.text, /2569-01-B/);
   await check('no session', 401, 'GET', '/api/transactions');
 
-  // admin and viewer keep their access
+  // admin can manage every unit's data without a unit restriction
   assert.equal((await check('admin list', 200, 'GET', '/api/transactions', null, admin)).json.length, 2);
+  const adminMade = await check('admin create other unit', 200, 'POST', '/api/transactions', { unit_id: 'B', fiscal_year: 2569, month_no: 2, disbursed_A: 4, stock_B: 12 }, admin);
+  assert.equal(adminMade.json.unit_id, 'B');
+  assert.equal(adminMade.json.reserve_C, 3);
+  assert.equal((await check('admin update other unit', 200, 'PUT', '/api/transactions/2569-02-B', { disbursed_A: 6, stock_B: 24 }, admin)).json.reserve_C, 4);
+  await check('admin delete other unit', 200, 'DELETE', '/api/transactions/2569-02-B', null, admin);
   assert.equal((await check('viewer list', 200, 'GET', '/api/transactions', null, view)).json.length, 2);
   await check('viewer write', 403, 'POST', '/api/transactions', { unit_id: 'A', fiscal_year: 2569, month_no: 4 }, view);
 
