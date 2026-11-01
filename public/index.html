@@ -723,8 +723,19 @@ function txnForm(txn, unitId) {
   const isNew = !txn, v = txn || { unit_id: unitId || S.units[0]?.unit_id, fiscal_year: S.fy, month_no: S.mo || 1 };
   form(isNew ? 'เพิ่มข้อมูลรายเดือน' : `แก้ไข ${txn.txn_id}`, [
     { k: 'unit_id', l: 'หน่วยบริการ', opts: unitOpts(), dis: !isNew }, { k: 'fiscal_year', l: 'ปีงบประมาณ', opts: fyOpts(v.fiscal_year), dis: !isNew }, { k: 'month_no', l: 'เดือน', opts: moOpts, dis: !isNew },
-    { k: 'disbursed_A', l: 'เบิกจ่าย (A)', num: 1 }, { k: 'stock_B', l: 'คงคลัง (B)', num: 1 }, { k: 'reserve_C', l: 'สำรอง (C)', num: 1 }, { k: 'note', l: 'หมายเหตุ', area: 1 }], v,
+    { k: 'disbursed_A', l: 'เบิกจ่าย (A)', num: 1 }, { k: 'stock_B', l: 'คงคลัง (B)', num: 1 }, { k: 'reserve_C', l: 'สำรอง (C) · คำนวณอัตโนมัติ', num: 1, dis: 1 }, { k: 'note', l: 'หมายเหตุ', area: 1 }], v,
     fd => isNew ? api('POST', 'transactions', fd) : api('PUT', 'transactions/' + encodeURIComponent(txn.txn_id), fd));
+  const a = $('#dlg-f [name=disbursed_A]');
+  const b = $('#dlg-f [name=stock_B]');
+  const c = $('#dlg-f [name=reserve_C]');
+  const recalculateReserve = () => {
+    const disbursed = Number(a.value);
+    const stock = Number(b.value);
+    c.value = disbursed > 0 && Number.isFinite(stock) ? (stock / disbursed).toFixed(2) : '';
+  };
+  a.oninput = recalculateReserve;
+  b.oninput = recalculateReserve;
+  recalculateReserve();
 }
 function unitForm(u) {
   const ds = [...new Set(S.units.map(x => x.district))];

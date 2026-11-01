@@ -65,9 +65,10 @@ function prepare(name, row, isNew) {
   if (name === 'transactions') {
     row.fiscal_year = Number(row.fiscal_year); row.month_no = Number(row.month_no);
     if (!Number.isInteger(row.fiscal_year) || !Number.isInteger(row.month_no) || row.month_no < 1 || row.month_no > 12) throw new HttpError(400, 'fiscal_year และ month_no ต้องถูกต้อง (month_no 1-12)');
-    for (const key of ['disbursed_A', 'stock_B', 'reserve_C']) if (row[key] != null) {
+    for (const key of ['disbursed_A', 'stock_B']) if (row[key] != null) {
       row[key] = Number(row[key]); if (!Number.isFinite(row[key]) || row[key] < 0) throw new HttpError(400, `${key} ต้องเป็นตัวเลขไม่ติดลบ`);
     }
+    row.reserve_C = row.disbursed_A > 0 && row.stock_B != null ? row.stock_B / row.disbursed_A : null;
     row.calendar_year = row.month_no <= 3 ? row.fiscal_year - 1 : row.fiscal_year;
     row.month_name = MONTHS[row.month_no - 1];
     if (isNew) row.txn_id = `${row.fiscal_year}-${String(row.month_no).padStart(2, '0')}-${row.unit_id}`;
