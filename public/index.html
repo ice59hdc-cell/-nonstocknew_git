@@ -23,7 +23,7 @@ h1,h2,h3{letter-spacing:-.01em}
 .brand{display:flex;align-items:center;gap:11px;color:#fff;font-weight:700;font-size:15px;line-height:1.25;padding:0 6px}
 .logo{width:38px;height:38px;border-radius:12px;background:var(--acc);display:grid;place-items:center;font-size:19px;box-shadow:0 6px 16px -4px rgba(99,102,241,.6);flex:none}
 .brand small{display:block;font-weight:400;color:#94a3b8;font-size:11px}
-nav{display:flex;flex-direction:column;gap:4px}
+nav{display:flex;flex-direction:column;gap:4px}nav button:not([data-public]){display:none}
 nav button{display:flex;align-items:center;gap:12px;border:0;background:none;color:#aab4c8;padding:11px 12px;border-radius:12px;cursor:pointer;font:inherit;font-weight:500;text-align:left;transition:background .15s,color .15s;position:relative}
 nav button svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 nav button:hover{background:rgba(255,255,255,.07);color:#fff}
@@ -207,8 +207,8 @@ h1,h2,h3{letter-spacing:0}
 <aside class="side">
   <div class="brand"><div class="logo">💊</div><span class="t">มูลค่ายาคงคลัง<small>Executive Dashboard</small></span></div>
   <nav id="nav">
-    <button data-t="exe"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span class="lg">สรุปผู้บริหาร</span><span class="sm">สรุป</span></button>
-    <button data-t="dash" class="on"><svg viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg><span class="lg">ภาพรวม</span><span class="sm">ภาพรวม</span></button>
+    <button data-t="exe" data-public><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span class="lg">สรุปผู้บริหาร</span><span class="sm">สรุป</span></button>
+    <button data-t="dash" data-public class="on"><svg viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg><span class="lg">ภาพรวม</span><span class="sm">ภาพรวม</span></button>
     <button data-t="txn"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span class="lg">ข้อมูลรายเดือน</span><span class="sm">รายเดือน</span></button>
     <button data-t="unit"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14M12 8v5M9.5 10.5h5M10 21v-4h4v4"/></svg><span class="lg">หน่วยบริการ</span><span class="sm">หน่วย</span></button>
     <button data-t="ins"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg><span class="lg">Key Insights</span><span class="sm">Insights</span></button>
