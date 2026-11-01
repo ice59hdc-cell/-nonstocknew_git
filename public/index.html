@@ -215,6 +215,7 @@ h1,h2,h3{letter-spacing:0}
     <button data-t="kpi"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg><span class="lg">เป้าหมาย KPI</span><span class="sm">KPI</span></button>
     <button data-t="mp"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h4"/></svg><span class="lg">Master Prompt</span><span class="sm">Prompt</span></button>
     <button data-t="usr" class="adm"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.5 3.3-5.5 6.5-5.5s5.9 2 6.5 5.5M17 4.5a3.5 3.5 0 0 1 0 7M21.5 20c-.4-2.4-1.8-4-3.8-4.8"/></svg><span class="lg">จัดการผู้ใช้</span><span class="sm">ผู้ใช้</span></button>
+    <button data-t="backup"><svg viewBox="0 0 24 24"><path d="M4 8h16M6 4h12l2 4v12H4V8l2-4zM8 20v-6h8v6M8 4v4h8"/></svg><span class="lg">การสำรองข้อมูล</span><span class="sm">สำรอง</span></button>
   </nav>
   <div class="side-foot">ปีงบประมาณ · สำนักงานสาธารณสุข</div>
 </aside>
@@ -284,6 +285,12 @@ h1,h2,h3{letter-spacing:0}
     <div class="scroll"><table id="mtbl"></table></div>
   </div>
 </section>
+
+<section id="t-backup" hidden><div class="card">
+  <h3>การสำรองข้อมูล</h3>
+  <p class="hint">เปิด Neon Backup & Restore เพื่อดู history และกู้คืนฐานข้อมูล PostgreSQL ของ Dashboard</p>
+  <div class="acts"><a class="btn pri" href="https://console.neon.tech/app/projects/polished-tree-90132922/branches/br-snowy-leaf-b73kqsle/restore" target="_blank" rel="noopener">เปิด Neon Backup & Restore</a></div>
+</div></section>
 
 <section id="t-usr" hidden><div class="card">
   <div class="bar"><span class="hint">ผู้ดูแลระบบ = เพิ่ม/แก้ไข/ลบข้อมูลได้ · ผู้ดูข้อมูล = ดูและส่งออกได้อย่างเดียว · หน่วยบริการ = ดูและบันทึกได้เฉพาะข้อมูลของหน่วยตนเอง</span><span class="sp"></span><button class="btn pri" id="add-usr">+ เพิ่มผู้ใช้</button></div>
